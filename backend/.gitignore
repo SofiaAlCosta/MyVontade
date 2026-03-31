@@ -1,0 +1,4 @@
+infrastructure/.env
+**/node_modules
+**/dist
+**/.env
