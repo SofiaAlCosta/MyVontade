@@ -1,0 +1,803 @@
+.home-page {
+  width: 100%;
+  min-height: 100vh;
+  padding: 0 0 40px;
+}
+
+.home-header {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  width: 100%;
+  padding: 0 24px;
+  border: none;
+  border-bottom: 1px solid rgba(47, 111, 109, 0.14);
+  border-radius: 0;
+  background: linear-gradient(
+    90deg,
+    #cfe3e0 0%,
+    #dcebed 40%,
+    #eaf2f4 64%,
+    #f7fbfb 84%,
+    #ffffff 100%
+  );
+  box-shadow: 0 8px 18px rgba(31, 41, 51, 0.04);
+}
+
+.home-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 22px 8px;
+}
+
+.home-brand {
+  color: var(--primary);
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.home-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding-left: 18px;
+}
+
+.home-account-link,
+.home-logout-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 20px;
+  border: 1px solid rgba(47, 111, 109, 0.16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--primary);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: none;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.home-account-link:hover,
+.home-logout-button:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+}
+
+.home-account-link:focus-visible,
+.home-logout-button:focus-visible,
+.home-action-button:focus-visible {
+  outline: 3px solid rgba(47, 111, 109, 0.22);
+  outline-offset: 3px;
+}
+
+.home-main {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 24px;
+  padding: 34px 24px 0;
+}
+
+.home-intro-card {
+  padding: clamp(28px, 4vw, 38px);
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: 30px;
+  background: linear-gradient(
+    145deg,
+    rgba(47, 111, 109, 0.98) 0%,
+    rgba(92, 126, 147, 0.92) 100%
+  );
+  box-shadow: 0 22px 42px rgba(47, 111, 109, 0.14);
+  color: #f8fcfb;
+}
+
+.home-title {
+  margin: 0;
+  max-width: 12ch;
+  font-size: clamp(2.3rem, 4vw, 3.35rem);
+  line-height: 1.04;
+}
+
+.home-description {
+  max-width: 42rem;
+  margin: 18px 0 0;
+  font-size: 1.04rem;
+  line-height: 1.65;
+  color: rgba(248, 252, 251, 0.92);
+}
+
+.home-section {
+  display: grid;
+  gap: 16px;
+}
+
+.home-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.home-section-header h2 {
+  margin: 0;
+  color: #102130;
+  font-size: 1.35rem;
+}
+
+.home-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.home-status-card,
+.home-actions-panel,
+.home-panel-card,
+.home-next-step-card {
+  border: 1px solid rgba(47, 111, 109, 0.12);
+  border-radius: 26px;
+  box-shadow: 0 18px 34px rgba(31, 41, 51, 0.06);
+}
+
+.home-status-card {
+  display: grid;
+  gap: 12px;
+  padding: 22px;
+}
+
+.home-status-card-positive {
+  background: linear-gradient(180deg, #eef8f4, #f8fcfb);
+}
+
+.home-status-card-warning {
+  background: linear-gradient(180deg, #fbf2e9, #fffaf5);
+}
+
+.home-status-card-calm {
+  background: linear-gradient(180deg, #edf3fb, #fafcff);
+}
+
+.home-status-card-soft {
+  background: linear-gradient(180deg, #eff6f5, #f9fcfb);
+}
+
+.home-status-title,
+.home-status-note,
+.home-next-step-text {
+  margin: 0;
+}
+
+.home-status-title {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.home-status-value {
+  color: #102130;
+  font-size: 1.28rem;
+  line-height: 1.15;
+}
+
+.home-status-note {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.home-actions-panel,
+.home-panel-card,
+.home-next-step-card {
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.home-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.home-overview-label,
+.home-overview-value,
+.home-overview-empty,
+.home-overview-check-text {
+  margin: 0;
+}
+
+.home-content-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.home-caregiver-panel {
+  gap: 8px;
+  padding: 20px;
+  height: 100%;
+}
+
+.home-overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.95fr);
+  gap: 16px;
+}
+
+.home-overview-grid-compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.home-overview-card {
+  display: grid;
+  gap: 14px;
+  padding: 22px;
+  border: 1px solid rgba(47, 111, 109, 0.12);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 18px 34px rgba(31, 41, 51, 0.06);
+}
+
+.home-overview-card-wide {
+  align-content: start;
+}
+
+.home-overview-checklist {
+  display: grid;
+  gap: 12px;
+}
+
+.home-overview-check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.home-overview-check-dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: var(--primary);
+  flex: 0 0 auto;
+}
+
+.home-overview-check-text,
+.home-overview-empty {
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.home-overview-list {
+  display: grid;
+  gap: 0;
+}
+
+.home-overview-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(47, 111, 109, 0.08);
+}
+
+.home-overview-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.home-overview-label {
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.home-overview-value {
+  color: #102130;
+  font-weight: 700;
+  text-align: right;
+}
+
+.home-action-button {
+  min-height: 52px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #2f6f6d 0%, #3f7d7b 100%);
+  color: #ffffff;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.home-action-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 24px rgba(47, 111, 109, 0.2);
+}
+
+.home-lower-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.95fr);
+  gap: 16px;
+}
+
+.home-panel-card,
+.home-next-step-card {
+  min-width: 0;
+}
+
+.home-association-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+
+.home-decision-list {
+  display: grid;
+  gap: 14px;
+}
+
+.home-decision-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid rgba(47, 111, 109, 0.08);
+  border-radius: 18px;
+  background: #f7fbfa;
+}
+
+.home-decision-label {
+  min-width: 0;
+  color: #102130;
+  font-weight: 700;
+}
+
+.home-decision-value {
+  min-width: 0;
+  color: var(--primary);
+  font-size: 0.95rem;
+  text-align: right;
+}
+
+.home-next-step-text {
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.home-caregiver-sheet {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+}
+
+.home-caregiver-sheet-active .home-caregiver-sheet-title {
+  transform: translateY(8px);
+}
+
+.home-caregiver-sheet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.home-caregiver-sheet-title,
+.home-caregiver-sheet-label,
+.home-caregiver-sheet-value {
+  margin: 0;
+}
+
+.home-caregiver-sheet-title {
+  color: #102130;
+  font-size: clamp(1.08rem, 1.4vw, 1.32rem);
+  line-height: 1.1;
+}
+
+.home-caregiver-sheet-list {
+  display: grid;
+  gap: 0;
+  margin-top: 2px;
+  border-top: 1px solid rgba(47, 111, 109, 0.08);
+}
+
+.home-caregiver-sheet-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.82fr) minmax(0, 1.18fr);
+  gap: 14px;
+  align-items: start;
+  padding: 11px 0;
+  border-bottom: 1px solid rgba(47, 111, 109, 0.08);
+}
+
+.home-caregiver-sheet-label {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.home-caregiver-sheet-value {
+  color: #102130;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: right;
+}
+
+.home-caregiver-sheet-value-stack {
+  display: grid;
+  gap: 3px;
+  justify-items: end;
+}
+
+.home-association-empty {
+  align-content: start;
+}
+
+.home-association-empty .home-connection-pill {
+  align-self: flex-start;
+  transform: translateY(-8px);
+}
+
+.home-association-empty-body {
+  display: grid;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.home-association-empty-text,
+.home-association-empty-note {
+  margin: 0;
+}
+
+.home-association-empty-text {
+  color: #102130;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.home-association-empty-note {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.home-feedback-message {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 18px;
+  font-weight: 600;
+}
+
+.home-feedback-message-success {
+  border: 1px solid rgba(47, 111, 109, 0.16);
+  background: #edf5f4;
+  color: #204b4a;
+}
+
+.home-feedback-message-error {
+  border: 1px solid rgba(200, 75, 75, 0.18);
+  background: #fff3f3;
+  color: #8d3232;
+}
+
+.home-connection-list {
+  display: grid;
+  gap: 14px;
+}
+
+.home-connection-card {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid rgba(47, 111, 109, 0.08);
+  border-radius: 20px;
+  background: #f7fbfa;
+}
+
+.home-connection-card-button {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.home-connection-card-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(47, 111, 109, 0.18);
+  box-shadow: 0 16px 24px rgba(31, 41, 51, 0.08);
+}
+
+.home-connection-card-selected {
+  border-color: rgba(47, 111, 109, 0.26);
+  background: linear-gradient(180deg, #eef8f4, #f8fcfb);
+}
+
+.home-connection-card-button:focus-visible {
+  outline: 3px solid rgba(47, 111, 109, 0.22);
+  outline-offset: 3px;
+}
+
+.home-connection-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.home-connection-title,
+.home-connection-subtitle,
+.home-connection-meta p {
+  margin: 0;
+}
+
+.home-connection-title {
+  color: #102130;
+  font-weight: 800;
+}
+
+.home-connection-subtitle {
+  margin-top: 6px;
+  color: var(--muted);
+}
+
+.home-connection-meta {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.home-connection-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #edf3fb;
+  color: #365d8d;
+  font-size: 0.84rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.home-connection-pill-warning {
+  background: #fbf2e9;
+  color: #8f6030;
+}
+
+.home-connection-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.home-detail-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.home-caregiver-profile-card {
+  display: grid;
+  gap: 18px;
+  padding: 24px;
+  border: 1px solid rgba(47, 111, 109, 0.12);
+  border-radius: 26px;
+  background: linear-gradient(145deg, rgba(47, 111, 109, 0.06), #ffffff 72%);
+}
+
+.home-caregiver-profile-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.home-caregiver-profile-title,
+.home-caregiver-profile-label,
+.home-caregiver-profile-value,
+.home-caregiver-notes-label {
+  margin: 0;
+}
+
+.home-caregiver-profile-title {
+  margin-top: 6px;
+  color: #102130;
+  font-size: 1.7rem;
+  line-height: 1.1;
+}
+
+.home-caregiver-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.home-caregiver-profile-item {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid rgba(47, 111, 109, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.home-caregiver-profile-label {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.home-caregiver-profile-value {
+  color: #102130;
+  line-height: 1.5;
+  font-weight: 700;
+}
+
+.home-caregiver-notes {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(47, 111, 109, 0.08);
+}
+
+.home-caregiver-notes-no-border {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.home-caregiver-notes-label {
+  color: #102130;
+  font-weight: 700;
+}
+
+@media (max-width: 980px) {
+  .home-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-lower-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-overview-grid-compact,
+  .home-association-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-caregiver-profile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .home-actions-grid,
+  .home-status-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .home-page {
+    padding: 0 0 24px;
+  }
+
+  .home-header {
+    padding: 0 16px;
+  }
+
+  .home-header-inner {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 18px 2px;
+  }
+
+  .home-main {
+    padding: 34px 16px 0;
+  }
+
+  .home-header-actions {
+    justify-content: space-between;
+    gap: 12px;
+    padding-left: 0;
+  }
+
+  .home-intro-card,
+  .home-actions-panel,
+  .home-panel-card,
+  .home-next-step-card,
+  .home-status-card {
+    border-radius: 24px;
+  }
+
+  .home-account-link,
+  .home-logout-button {
+    min-height: 44px;
+    padding: 0 16px;
+  }
+
+  .home-section-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 560px) {
+  .home-header-actions {
+    flex-direction: column;
+  }
+
+  .home-account-link,
+  .home-logout-button,
+  .home-action-button {
+    width: 100%;
+  }
+
+  .home-decision-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .home-overview-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .home-overview-value {
+    text-align: left;
+  }
+
+  .home-caregiver-sheet-head,
+  .home-caregiver-sheet-row {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .home-caregiver-sheet-value {
+    text-align: left;
+  }
+
+  .home-caregiver-sheet-value-stack {
+    justify-items: start;
+  }
+
+  .home-caregiver-profile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-connection-top,
+  .home-connection-actions,
+  .home-caregiver-profile-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
