@@ -1,65 +1,272 @@
-import { useAuth0 } from "@auth0/auth0-react";
 import { useState } from "react";
+import AccountPage from "./pages/account";
+import CaregiverHome from "./pages/caregiverHome";
+import DecisionsPage from "./pages/decisions";
+import DoctorHome from "./pages/doctorHome";
+import DocumentsPage from "./pages/documents";
+import Login from "./pages/login";
+import PatientCaregiverPage from "./pages/patientCaregiver";
+import PatientHome from "./pages/patientHome";
+import Signup from "./pages/signup";
+import type { SignupFormData, User } from "./types/user";
+import "./App.css";
+
+type Screen =
+  | "login"
+  | "signup"
+  | "home"
+  | "account"
+  | "decisions"
+  | "caregiver"
+  | "documents";
+
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
+const LAST_LOGIN_EMAIL_KEY = "myvontade-last-login-email";
+
+function getErrorMessage(error: string | undefined) {
+  if (error === "missing_required_fields") {
+    return "Preenche os campos obrigatórios.";
+  }
+
+  if (error === "invalid_role") {
+    return "Escolhe um tipo de utilizador válido.";
+  }
+
+  if (error === "user_already_exists") {
+    return "Já existe uma conta com estes dados.";
+  }
+
+  if (error === "invalid_credentials") {
+    return "Email ou palavra-passe inválidos.";
+  }
+
+  if (error === "invalid_field_format") {
+    return "Existem campos com formato inválido.";
+  }
+
+  return "Ocorreu um erro. Tenta novamente.";
+}
 
 export default function App() {
-  const {
-    loginWithRedirect,
-    logout,
-    isAuthenticated,
-    isLoading,
-    user,
-    getAccessTokenSilently,
-  } = useAuth0();
+  const [screen, setScreen] = useState<Screen>("login");
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [message, setMessage] = useState("");
 
-  const [msg, setMsg] = useState<string>("");
-
-  const callPrivate = async () => {
-    const token = await getAccessTokenSilently();
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/private`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-    setMsg(data.message ?? JSON.stringify(data));
+  const goToLogin = () => {
+    setMessage("");
+    setScreen("login");
   };
 
-  if (isLoading) return <div>A carregar…</div>;
+  const goToSignup = () => {
+    setMessage("");
+    setScreen("signup");
+  };
+
+  const goToHome = () => {
+    setScreen("home");
+  };
+
+  const goToAccount = () => {
+    setScreen("account");
+  };
+
+  const goToDecisions = () => {
+    setScreen("decisions");
+  };
+
+  const goToCaregiver = () => {
+    setScreen("caregiver");
+  };
+
+  const goToDocuments = () => {
+    setScreen("documents");
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setMessage("");
+    setScreen("login");
+  };
+
+  const handleAccountDeleted = () => {
+    const deletedEmail = currentUser?.email.trim().toLowerCase();
+    const savedEmail = window.localStorage
+      .getItem(LAST_LOGIN_EMAIL_KEY)
+      ?.trim()
+      .toLowerCase();
+
+    if (deletedEmail && savedEmail === deletedEmail) {
+      window.localStorage.removeItem(LAST_LOGIN_EMAIL_KEY);
+    }
+
+    setCurrentUser(null);
+    setMessage("Conta eliminada com sucesso.");
+    setScreen("login");
+  };
+
+  const handleSignup = async (formData: SignupFormData) => {
+    setMessage("");
+
+    try {
+      const response = await fetch(`${API_URL}/api/auth/signup`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = (await response.json()) as {
+        error?: string;
+      };
+
+      if (!response.ok) {
+        setMessage(getErrorMessage(data.error));
+        return;
+      }
+
+      window.localStorage.setItem(
+        LAST_LOGIN_EMAIL_KEY,
+        formData.email.trim().toLowerCase()
+      );
+      setMessage("Conta criada com sucesso. Agora já podes entrar.");
+      setScreen("login");
+    } catch {
+      setMessage("Não foi possível ligar ao servidor.");
+    }
+  };
+
+  const handleLogin = async (email: string, password: string) => {
+    setMessage("");
+
+    try {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = (await response.json()) as {
+        error?: string;
+        user?: User;
+      };
+
+      if (!response.ok || !data.user) {
+        setMessage(getErrorMessage(data.error));
+        return;
+      }
+
+      window.localStorage.setItem(
+        LAST_LOGIN_EMAIL_KEY,
+        email.trim().toLowerCase()
+      );
+      setCurrentUser(data.user);
+      setScreen("home");
+    } catch {
+      setMessage("Não foi possível ligar ao servidor.");
+    }
+  };
+
+  if (currentUser) {
+    if (screen === "account") {
+      return (
+        <AccountPage
+          apiUrl={API_URL}
+          user={currentUser}
+          onBack={goToHome}
+          onAccountDeleted={handleAccountDeleted}
+          onLogout={handleLogout}
+          onUserUpdated={setCurrentUser}
+        />
+      );
+    }
+
+    if (screen === "decisions") {
+      return (
+        <DecisionsPage
+          apiUrl={API_URL}
+          user={currentUser}
+          onBack={goToHome}
+          onOpenAccount={goToAccount}
+          onLogout={handleLogout}
+        />
+      );
+    }
+
+    if (screen === "documents") {
+      return (
+        <DocumentsPage
+          apiUrl={API_URL}
+          user={currentUser}
+          onBack={goToHome}
+          onOpenAccount={goToAccount}
+          onLogout={handleLogout}
+        />
+      );
+    }
+
+    if (screen === "caregiver" && currentUser.role === "patient") {
+      return (
+        <PatientCaregiverPage
+          apiUrl={API_URL}
+          user={currentUser}
+          onBack={goToHome}
+          onOpenAccount={goToAccount}
+          onLogout={handleLogout}
+        />
+      );
+    }
+
+    if (currentUser.role === "caregiver") {
+      return (
+        <CaregiverHome
+          apiUrl={API_URL}
+          user={currentUser}
+          onOpenAccount={goToAccount}
+          onLogout={handleLogout}
+        />
+      );
+    }
+
+    if (currentUser.role === "doctor") {
+      return (
+        <DoctorHome
+          user={currentUser}
+          onOpenAccount={goToAccount}
+          onLogout={handleLogout}
+        />
+      );
+    }
+
+    return (
+      <PatientHome
+        apiUrl={API_URL}
+        user={currentUser}
+        onOpenDecisions={goToDecisions}
+        onOpenCaregiver={goToCaregiver}
+        onOpenDocuments={goToDocuments}
+        onOpenAccount={goToAccount}
+        onLogout={handleLogout}
+      />
+    );
+  }
 
   return (
-    <div style={{ padding: 24, fontFamily: "sans-serif" }}>
-      <h1>MyVontade</h1>
-
-      {!isAuthenticated ? (
-        <button
-          type="button"
-          onClick={async () => {
-            console.log("CLICK LOGIN");
-            try {
-              await loginWithRedirect();
-              console.log("LOGIN REDIRECT CHAMADO");
-            } catch (error) {
-              console.error("ERRO LOGIN", error);
-            }
-          }}>
-          Login
-        </button>
+    <div className="app-shell">
+      {screen === "login" ? (
+        <Login
+          message={message}
+          onGoToSignup={goToSignup}
+          onLogin={handleLogin}
+        />
       ) : (
-        <>
-          <button
-            type="button"
-            onClick={() =>
-              logout({ logoutParams: { returnTo: window.location.origin } })
-            }
-          >
-            Logout
-          </button>
-
-          <pre>{JSON.stringify(user, null, 2)}</pre>
-
-          <button type="button" onClick={callPrivate}>
-            Chamar API privada
-          </button>
-          <p>{msg}</p>
-        </>
+        <Signup
+          message={message}
+          onGoToLogin={goToLogin}
+          onSignup={handleSignup}
+        />
       )}
     </div>
   );
