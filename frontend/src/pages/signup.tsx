@@ -64,6 +64,7 @@ export default function Signup({
   onGoToLogin,
 }: SignupProps) {
   const [role, setRole] = useState("");
+  const isRoleSelected = role !== "";
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -192,24 +193,25 @@ export default function Signup({
       <section className="info-panel">
         <div>
           <p className="panel-brand">MyVontade</p>
-          <h1 className="panel-title">Registo simples para decisões em saúde.</h1>
+          <h1 className="panel-title">A tua vontade, com clareza e segurança.</h1>
           <p className="panel-text">
-            Cria a tua conta de forma simples, clara e ajustada ao teu perfil.
+            Uma plataforma simples para consultar diretivas, decisões e
+            documentos de saúde.
           </p>
         </div>
 
         <div className="panel-notes">
-          <p>Ao criar a conta</p>
+          <p>Na plataforma encontras</p>
           <ul className="panel-list">
-            <li>Perfil ajustado ao teu papel</li>
-            <li>Apenas a informação necessária</li>
-            <li>Campos simples e fáceis de preencher</li>
+            <li>Clareza para registar a tua vontade</li>
+            <li>Partilha segura com quem te acompanha</li>
+            <li>Informação acessível quando for precisa</li>
           </ul>
         </div>
       </section>
 
       <section className="form-side">
-        <div className="form-card">
+        <div className={`form-card${isRoleSelected ? " form-card-expanded" : ""}`}>
           <h2 className="form-title">Registo</h2>
 
           {!role ? (

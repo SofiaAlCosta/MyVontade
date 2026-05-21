@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./login.css";
+
+const LAST_LOGIN_EMAIL_KEY = "myvontade-last-login-email";
 
 type LoginProps = {
   message: string;
@@ -15,8 +17,27 @@ export default function Login({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  useEffect(() => {
+    const savedEmail = window.localStorage.getItem(LAST_LOGIN_EMAIL_KEY);
+
+    if (savedEmail) {
+      setEmail(savedEmail);
+    }
+  }, []);
+
   const handleLogin = async () => {
     await onLogin(email, password);
+  };
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+
+    if (value.trim()) {
+      window.localStorage.setItem(LAST_LOGIN_EMAIL_KEY, value.trim());
+      return;
+    }
+
+    window.localStorage.removeItem(LAST_LOGIN_EMAIL_KEY);
   };
 
   return (
@@ -32,11 +53,11 @@ export default function Login({
         </div>
 
         <div className="panel-notes">
-          <p>Na plataforma encontra</p>
+          <p>Na plataforma encontras</p>
           <ul className="panel-list">
-            <li>Informação organizada num só lugar</li>
-            <li>Acesso partilhado com controlo</li>
-            <li>Linguagem clara e acessível</li>
+            <li>Clareza para registar a tua vontade</li>
+            <li>Partilha segura com quem te acompanha</li>
+            <li>Informação acessível quando for precisa</li>
           </ul>
         </div>
       </section>
@@ -51,8 +72,9 @@ export default function Login({
               <input
                 type="email"
                 placeholder="nome@exemplo.pt"
+                autoComplete="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => handleEmailChange(e.target.value)}
               />
             </label>
 
@@ -61,6 +83,7 @@ export default function Login({
               <input
                 type="password"
                 placeholder="Introduz a tua palavra-passe"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
