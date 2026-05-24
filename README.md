@@ -10,38 +10,38 @@
 
 ### Primeira vez
 
-1. Na raiz do projeto, entra na pasta da infraestrutura:
+1. Na raiz do projeto, entre na pasta da infraestrutura:
 
 ```powershell
 cd infrastructure
 ```
 
-2. Inicia a base de dados e a API:
+2. Inicie a base de dados e a API:
 
 ```powershell
 docker compose up -d
 ```
 
-3. Volta à raiz e entra no frontend:
+3. Volte à raiz e entre no frontend:
 
 ```powershell
 cd ..
 cd frontend
 ```
 
-4. Instala as dependências do frontend:
+4. Instale as dependências do frontend:
 
 ```powershell
 npm install
 ```
 
-5. Arranca o frontend:
+5. Arranque o frontend:
 
 ```powershell
 npm run dev
 ```
 
-6. Abre no navegador:
+6. Abra no navegador:
 
 - Frontend: `http://localhost:5173`
 - API: `http://localhost:3001`
@@ -62,7 +62,7 @@ npm run dev
 
 - `docker compose up -d` arranca a base de dados PostgreSQL e a API
 - `npm run dev` na pasta `frontend` arranca a interface web
-- Não é preciso arrancar o backend manualmente fora do Docker
+- Não é necessário arrancar o backend manualmente fora do Docker
 
 ### Como parar tudo
 
@@ -73,11 +73,11 @@ cd infrastructure
 docker compose down
 ```
 
-Para parar o frontend, usa `Ctrl + C` no terminal onde correste `npm run dev`.
+Para parar o frontend, use `Ctrl + C` no terminal onde executou `npm run dev`.
 
 ### Nota
 
-Se adicionares novas dependências ao frontend, volta a correr:
+Se adicionar novas dependências ao frontend, execute novamente:
 
 ```powershell
 npm install
