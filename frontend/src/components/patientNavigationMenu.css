@@ -1,0 +1,124 @@
+.patient-nav-menu {
+  position: relative;
+}
+
+.patient-nav-menu-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 1px solid rgba(47, 111, 109, 0.16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.58);
+  color: var(--primary);
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.patient-nav-menu-toggle:hover,
+.patient-nav-menu-toggle-open {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+}
+
+.patient-nav-menu-toggle:focus-visible,
+.patient-nav-menu-item:focus-visible {
+  outline: 3px solid rgba(47, 111, 109, 0.22);
+  outline-offset: 3px;
+}
+
+.patient-nav-menu-icon {
+  display: grid;
+  gap: 4px;
+}
+
+.patient-nav-menu-icon span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.patient-nav-menu-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 120;
+  width: min(260px, calc(100vw - 32px));
+  padding: 12px;
+  border: 1px solid rgba(47, 111, 109, 0.14);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 20px 34px rgba(31, 41, 51, 0.12);
+}
+
+.patient-nav-menu-list {
+  display: grid;
+  gap: 6px;
+}
+
+.patient-nav-menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 14px;
+  background: transparent;
+  color: #48626d;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.patient-nav-menu-item:hover {
+  background: rgba(47, 111, 109, 0.08);
+  color: var(--primary);
+}
+
+.patient-nav-menu-item-active {
+  background: rgba(47, 111, 109, 0.1);
+  color: var(--primary);
+}
+
+.patient-nav-menu-divider {
+  height: 1px;
+  margin: 10px 0;
+  background: rgba(47, 111, 109, 0.1);
+}
+
+.patient-nav-menu-item-logout {
+  color: #8d3232;
+}
+
+.patient-nav-menu-item-logout:hover {
+  background: rgba(200, 75, 75, 0.08);
+  color: #8d3232;
+}
+
+@media (max-width: 620px) {
+  .patient-nav-menu {
+    width: 100%;
+  }
+
+  .patient-nav-menu-toggle {
+    width: 100%;
+  }
+
+  .patient-nav-menu-panel {
+    width: 100%;
+  }
+}
