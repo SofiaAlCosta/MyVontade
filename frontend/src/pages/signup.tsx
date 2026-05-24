@@ -28,9 +28,27 @@ const roleOptions = [
   { value: "caregiver", label: "Cuidador" },
 ];
 
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const emailPattern = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
 const nineDigitPattern = /^\d{9}$/;
 const doctorLicensePattern = /^\d{4,6}$/;
+const passwordRules = [
+  {
+    label: "Pelo menos 8 caracteres",
+    test: (value: string) => value.length >= 8,
+  },
+  {
+    label: "Pelo menos 1 letra maiúscula",
+    test: (value: string) => /[A-Z]/.test(value),
+  },
+  {
+    label: "Pelo menos 1 letra minúscula",
+    test: (value: string) => /[a-z]/.test(value),
+  },
+  {
+    label: "Pelo menos 1 número",
+    test: (value: string) => /\d/.test(value),
+  },
+] as const;
 
 function formatNineDigitValue(value: string) {
   const digits = value.replace(/\D/g, "").slice(0, 9);
@@ -44,6 +62,34 @@ function formatDoctorLicenseValue(value: string) {
 
 function hasValidEmailFormat(value: string) {
   return emailPattern.test(value.trim());
+}
+
+function getEmailValidationMessage(value: string) {
+  if (!value.trim()) {
+    return "Obrigatório";
+  }
+
+  if (!hasValidEmailFormat(value)) {
+    return "Email inválido";
+  }
+
+  return "";
+}
+
+function hasValidPasswordFormat(value: string) {
+  return passwordRules.every((rule) => rule.test(value));
+}
+
+function getPasswordValidationMessage(value: string) {
+  if (!value.trim()) {
+    return "Obrigatório";
+  }
+
+  if (!hasValidPasswordFormat(value)) {
+    return "Palavra-passe inválida";
+  }
+
+  return "";
 }
 
 function hasValidNineDigitFormat(value: string) {
@@ -75,6 +121,7 @@ export default function Signup({
   const [specialty, setSpecialty] = useState("");
   const [relationshipToPatient, setRelationshipToPatient] = useState("");
   const [errors, setErrors] = useState<SignupErrors>({});
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
 
   const clearError = (field: keyof SignupFormData) => {
     setErrors((currentErrors) => {
@@ -95,14 +142,16 @@ export default function Signup({
       nextErrors.name = "Obrigatório";
     }
 
-    if (!email.trim()) {
-      nextErrors.email = "Obrigatório";
-    } else if (!hasValidEmailFormat(email)) {
-      nextErrors.email = "Email inválido";
+    const emailValidationMessage = getEmailValidationMessage(email);
+
+    if (emailValidationMessage) {
+      nextErrors.email = emailValidationMessage;
     }
 
-    if (!password.trim()) {
-      nextErrors.password = "Obrigatório";
+    const passwordValidationMessage = getPasswordValidationMessage(password);
+
+    if (passwordValidationMessage) {
+      nextErrors.password = passwordValidationMessage;
     }
 
     if (role === "patient") {
@@ -177,7 +226,7 @@ export default function Signup({
     await onSignup({
       role,
       name,
-      email,
+      email: email.trim(),
       password,
       patientNumber,
       dateOfBirth,
@@ -187,6 +236,60 @@ export default function Signup({
       relationshipToPatient,
     });
   };
+
+  const handleEmailBlur = () => {
+    if (!email.trim()) {
+      return;
+    }
+
+    const emailValidationMessage = getEmailValidationMessage(email);
+
+    setErrors((currentErrors) => {
+      if (!emailValidationMessage) {
+        if (!currentErrors.email) {
+          return currentErrors;
+        }
+
+        const nextErrors = { ...currentErrors };
+        delete nextErrors.email;
+        return nextErrors;
+      }
+
+      return {
+        ...currentErrors,
+        email: emailValidationMessage,
+      };
+    });
+  };
+
+  const handlePasswordBlur = () => {
+    setIsPasswordFocused(false);
+
+    if (!password.trim()) {
+      return;
+    }
+
+    const passwordValidationMessage = getPasswordValidationMessage(password);
+
+    setErrors((currentErrors) => {
+      if (!passwordValidationMessage) {
+        if (!currentErrors.password) {
+          return currentErrors;
+        }
+
+        const nextErrors = { ...currentErrors };
+        delete nextErrors.password;
+        return nextErrors;
+      }
+
+      return {
+        ...currentErrors,
+        password: passwordValidationMessage,
+      };
+    });
+  };
+
+  const shouldShowPasswordRules = isPasswordFocused || Boolean(errors.password);
 
   return (
     <div className="signup-page">
@@ -280,7 +383,9 @@ export default function Signup({
                   </div>
                   <input
                     type="email"
-                    placeholder="nome@exemplo.pt"
+                    inputMode="email"
+                    autoComplete="email"
+                    placeholder="nome@gmail.com"
                     required
                     aria-invalid={Boolean(errors.email)}
                     value={email}
@@ -288,6 +393,7 @@ export default function Signup({
                       setEmail(e.target.value);
                       clearError("email");
                     }}
+                    onBlur={handleEmailBlur}
                     className={errors.email ? "input-error" : ""}
                   />
                 </label>
@@ -302,15 +408,42 @@ export default function Signup({
                   <input
                     type="password"
                     placeholder="Cria uma palavra-passe"
+                    autoComplete="new-password"
                     required
                     aria-invalid={Boolean(errors.password)}
                     value={password}
+                    onFocus={() => setIsPasswordFocused(true)}
                     onChange={(e) => {
                       setPassword(e.target.value);
                       clearError("password");
                     }}
+                    onBlur={handlePasswordBlur}
                     className={errors.password ? "input-error" : ""}
                   />
+
+                  {shouldShowPasswordRules && (
+                    <div className="password-rules" aria-live="polite">
+                      <p className="password-rules-title">A palavra-passe deve ter:</p>
+                      <ul className="password-rules-list">
+                        {passwordRules.map((rule) => {
+                          const isRuleMet = rule.test(password);
+
+                          return (
+                            <li
+                              key={rule.label}
+                              className={
+                                isRuleMet
+                                  ? "password-rule password-rule-valid"
+                                  : "password-rule"
+                              }
+                            >
+                              {rule.label}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  )}
                 </label>
 
                 {role === "patient" && (

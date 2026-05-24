@@ -283,6 +283,58 @@
   box-shadow: 0 0 0 4px rgba(200, 75, 75, 0.12);
 }
 
+.signup-page .password-rules {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid rgba(47, 111, 109, 0.12);
+  border-radius: 16px;
+  background: #f7fbfa;
+}
+
+.signup-page .password-rules-title {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.signup-page .password-rules-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.signup-page .password-rule {
+  position: relative;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.signup-page .password-rule::before {
+  content: "";
+  position: absolute;
+  top: 0.55em;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(47, 111, 109, 0.22);
+}
+
+.signup-page .password-rule-valid {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.signup-page .password-rule-valid::before {
+  background: var(--primary);
+}
+
 .signup-page .detail-box {
   display: grid;
   gap: 18px;

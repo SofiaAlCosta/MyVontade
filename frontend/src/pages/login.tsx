@@ -2,6 +2,61 @@ import { useEffect, useState } from "react";
 import "./login.css";
 
 const LAST_LOGIN_EMAIL_KEY = "myvontade-last-login-email";
+const LOGIN_EMAIL_HISTORY_KEY = "myvontade-login-email-history";
+const MAX_SAVED_EMAILS = 6;
+
+function saveEmailToHistory(savedEmails: string[], value: string) {
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue) {
+    return savedEmails;
+  }
+
+  return [
+    trimmedValue,
+    ...savedEmails.filter(
+      (savedEmail) => savedEmail.toLowerCase() !== trimmedValue.toLowerCase()
+    ),
+  ].slice(0, MAX_SAVED_EMAILS);
+}
+
+function persistLoginEmailHistory(savedEmails: string[]) {
+  window.localStorage.setItem(
+    LOGIN_EMAIL_HISTORY_KEY,
+    JSON.stringify(savedEmails)
+  );
+}
+
+function readSavedLoginEmails() {
+  let savedEmails: string[] = [];
+
+  try {
+    const storedHistory = window.localStorage.getItem(LOGIN_EMAIL_HISTORY_KEY);
+
+    if (storedHistory) {
+      const parsedHistory = JSON.parse(storedHistory);
+
+      if (Array.isArray(parsedHistory)) {
+        savedEmails = parsedHistory.filter(
+          (value): value is string =>
+            typeof value === "string" && value.trim().length > 0
+        );
+      }
+    }
+  } catch {
+    savedEmails = [];
+  }
+
+  const legacyEmail = window.localStorage.getItem(LAST_LOGIN_EMAIL_KEY)?.trim() ?? "";
+  const mergedHistory = legacyEmail
+    ? saveEmailToHistory(savedEmails, legacyEmail)
+    : savedEmails;
+
+  persistLoginEmailHistory(mergedHistory);
+  window.localStorage.removeItem(LAST_LOGIN_EMAIL_KEY);
+
+  return mergedHistory;
+}
 
 type LoginProps = {
   message: string;
@@ -16,29 +71,49 @@ export default function Login({
 }: LoginProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [savedEmails, setSavedEmails] = useState<string[]>([]);
+  const [isEmailHistoryVisible, setIsEmailHistoryVisible] = useState(false);
 
   useEffect(() => {
-    const savedEmail = window.localStorage.getItem(LAST_LOGIN_EMAIL_KEY);
-
-    if (savedEmail) {
-      setEmail(savedEmail);
-    }
+    setSavedEmails(readSavedLoginEmails());
   }, []);
 
   const handleLogin = async () => {
-    await onLogin(email, password);
+    const trimmedEmail = email.trim();
+
+    if (trimmedEmail) {
+      const nextSavedEmails = saveEmailToHistory(savedEmails, trimmedEmail);
+      setSavedEmails(nextSavedEmails);
+      persistLoginEmailHistory(nextSavedEmails);
+    }
+
+    setEmail(trimmedEmail);
+    setIsEmailHistoryVisible(false);
+    await onLogin(trimmedEmail, password);
   };
 
   const handleEmailChange = (value: string) => {
     setEmail(value);
+    setIsEmailHistoryVisible(true);
+  };
 
-    if (value.trim()) {
-      window.localStorage.setItem(LAST_LOGIN_EMAIL_KEY, value.trim());
-      return;
+  const handleEmailSelect = (selectedEmail: string) => {
+    setEmail(selectedEmail);
+    setIsEmailHistoryVisible(false);
+  };
+
+  const filteredSavedEmails = savedEmails.filter((savedEmail) => {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      return true;
     }
 
-    window.localStorage.removeItem(LAST_LOGIN_EMAIL_KEY);
-  };
+    return savedEmail.toLowerCase().includes(normalizedEmail);
+  });
+
+  const shouldShowEmailHistory =
+    isEmailHistoryVisible && filteredSavedEmails.length > 0;
 
   return (
     <div className="login-page">
@@ -69,13 +144,41 @@ export default function Login({
           <div className="form-fields">
             <label className="form-field">
               <span>Email</span>
-              <input
-                type="email"
-                placeholder="nome@exemplo.pt"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => handleEmailChange(e.target.value)}
-              />
+              <div className="email-field-group">
+                <input
+                  type="email"
+                  placeholder="nome@exemplo.pt"
+                  autoComplete="off"
+                  value={email}
+                  onChange={(e) => handleEmailChange(e.target.value)}
+                  onFocus={() => setIsEmailHistoryVisible(true)}
+                  onBlur={() => {
+                    window.setTimeout(() => {
+                      setIsEmailHistoryVisible(false);
+                    }, 120);
+                  }}
+                  aria-expanded={shouldShowEmailHistory}
+                  aria-haspopup="listbox"
+                />
+
+                {shouldShowEmailHistory && (
+                  <div className="email-history" role="listbox" aria-label="Histórico de emails">
+                    {filteredSavedEmails.map((savedEmail) => (
+                      <button
+                        key={savedEmail}
+                        className="email-history-item"
+                        type="button"
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          handleEmailSelect(savedEmail);
+                        }}
+                      >
+                        {savedEmail}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </label>
 
             <label className="form-field">
