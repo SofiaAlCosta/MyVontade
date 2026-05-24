@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
+import PatientNavigationMenu from "../components/PatientNavigationMenu";
 import type { AccountProfile, SignupFormData, User } from "../types/user";
 import {
   formatDoctorLicenseValue,
@@ -18,6 +19,13 @@ type AccountPageProps = {
   onAccountDeleted: () => void;
   onLogout: () => void;
   onUserUpdated: (user: User) => void;
+  patientNavigation?: {
+    onOpenHome: () => void;
+    onOpenDecisions: () => void;
+    onOpenCaregiver: () => void;
+    onOpenDocuments: () => void;
+    onOpenAccount: () => void;
+  };
 };
 
 type AccountFormData = Pick<
@@ -187,18 +195,6 @@ async function prepareProfilePhoto(file: File) {
   return canvas.toDataURL("image/jpeg", 0.88);
 }
 
-function getProfileSectionTitle(role: User["role"]) {
-  if (role === "patient") {
-    return "Dados do perfil";
-  }
-
-  if (role === "doctor") {
-    return "Dados do perfil";
-  }
-
-  return "Dados do perfil";
-}
-
 function hasSameFormData(left: AccountFormData, right: AccountFormData) {
   return accountFormFields.every((field) => left[field] === right[field]);
 }
@@ -210,6 +206,7 @@ export default function AccountPage({
   onAccountDeleted,
   onLogout,
   onUserUpdated,
+  patientNavigation,
 }: AccountPageProps) {
   const [formData, setFormData] = useState<AccountFormData>(() =>
     createInitialFormData(user)
@@ -566,12 +563,34 @@ export default function AccountPage({
         <div className="account-brand">MyVontade</div>
 
         <div className="account-header-actions">
-          <button className="account-header-button" type="button" onClick={onBack}>
-            Voltar ao início
-          </button>
-          <button className="account-logout-button" type="button" onClick={onLogout}>
-            Terminar sessão
-          </button>
+          {user.role === "patient" && patientNavigation ? (
+            <PatientNavigationMenu
+              currentScreen="account"
+              onOpenHome={patientNavigation.onOpenHome}
+              onOpenDecisions={patientNavigation.onOpenDecisions}
+              onOpenCaregiver={patientNavigation.onOpenCaregiver}
+              onOpenDocuments={patientNavigation.onOpenDocuments}
+              onOpenAccount={patientNavigation.onOpenAccount}
+              onLogout={onLogout}
+            />
+          ) : (
+            <>
+              <button
+                className="account-header-button"
+                type="button"
+                onClick={onBack}
+              >
+                Voltar ao início
+              </button>
+              <button
+                className="account-logout-button"
+                type="button"
+                onClick={onLogout}
+              >
+                Terminar sessão
+              </button>
+            </>
+          )}
         </div>
       </header>
 
@@ -737,9 +756,7 @@ export default function AccountPage({
 
               {activeSection === "profile" && (
                 <section className="account-card">
-                  <h2 className="account-card-title">
-                    {getProfileSectionTitle(user.role)}
-                  </h2>
+                  <h2 className="account-card-title">Dados do perfil</h2>
 
                   <div className="account-fields-grid">
                     {user.role === "patient" && (
