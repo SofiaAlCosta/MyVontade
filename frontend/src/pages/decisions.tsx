@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
+import PatientNavigationMenu from "../components/PatientNavigationMenu";
 import type { PatientDecisions, User } from "../types/user";
 import "./patientModule.css";
 
 type DecisionsPageProps = {
   apiUrl: string;
   user: User;
-  onBack: () => void;
+  onOpenHome: () => void;
+  onOpenDecisions: () => void;
+  onOpenCaregiver: () => void;
+  onOpenDocuments: () => void;
   onOpenAccount: () => void;
   onLogout: () => void;
 };
@@ -91,7 +95,10 @@ function getDecisionsMessage(error: string | undefined) {
 export default function DecisionsPage({
   apiUrl,
   user,
-  onBack,
+  onOpenHome,
+  onOpenDecisions,
+  onOpenCaregiver,
+  onOpenDocuments,
   onOpenAccount,
   onLogout,
 }: DecisionsPageProps) {
@@ -274,19 +281,15 @@ export default function DecisionsPage({
         <div className="module-brand">MyVontade</div>
 
         <div className="module-header-actions">
-          <button className="module-header-button" type="button" onClick={onBack}>
-            Início
-          </button>
-          <button
-            className="module-header-button"
-            type="button"
-            onClick={onOpenAccount}
-          >
-            Conta
-          </button>
-          <button className="module-header-button" type="button" onClick={onLogout}>
-            Terminar sessão
-          </button>
+          <PatientNavigationMenu
+            currentScreen="decisions"
+            onOpenHome={onOpenHome}
+            onOpenDecisions={onOpenDecisions}
+            onOpenCaregiver={onOpenCaregiver}
+            onOpenDocuments={onOpenDocuments}
+            onOpenAccount={onOpenAccount}
+            onLogout={onLogout}
+          />
         </div>
       </header>
 

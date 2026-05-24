@@ -4,13 +4,17 @@ import {
   useState,
   type ChangeEvent,
 } from "react";
+import PatientNavigationMenu from "../components/PatientNavigationMenu";
 import type { PatientDocument, User } from "../types/user";
 import "./patientModule.css";
 
 type DocumentsPageProps = {
   apiUrl: string;
   user: User;
-  onBack: () => void;
+  onOpenHome: () => void;
+  onOpenDecisions: () => void;
+  onOpenCaregiver: () => void;
+  onOpenDocuments: () => void;
   onOpenAccount: () => void;
   onLogout: () => void;
 };
@@ -111,7 +115,10 @@ function getFileBadgeLabel(fileName: string) {
 export default function DocumentsPage({
   apiUrl,
   user,
-  onBack,
+  onOpenHome,
+  onOpenDecisions,
+  onOpenCaregiver,
+  onOpenDocuments,
   onOpenAccount,
   onLogout,
 }: DocumentsPageProps) {
@@ -374,19 +381,15 @@ export default function DocumentsPage({
         <div className="module-brand">MyVontade</div>
 
         <div className="module-header-actions">
-          <button className="module-header-button" type="button" onClick={onBack}>
-            Início
-          </button>
-          <button
-            className="module-header-button"
-            type="button"
-            onClick={onOpenAccount}
-          >
-            Conta
-          </button>
-          <button className="module-header-button" type="button" onClick={onLogout}>
-            Terminar sessão
-          </button>
+          <PatientNavigationMenu
+            currentScreen="documents"
+            onOpenHome={onOpenHome}
+            onOpenDecisions={onOpenDecisions}
+            onOpenCaregiver={onOpenCaregiver}
+            onOpenDocuments={onOpenDocuments}
+            onOpenAccount={onOpenAccount}
+            onLogout={onLogout}
+          />
         </div>
       </header>
 

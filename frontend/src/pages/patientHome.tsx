@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import PatientNavigationMenu from "../components/PatientNavigationMenu";
 import type {
   DashboardDecisionSummary,
   PatientCaregiverLink,
@@ -12,6 +13,7 @@ import "./patientHome.css";
 type HomeProps = {
   apiUrl: string;
   user: User;
+  onOpenHome: () => void;
   onOpenDecisions: () => void;
   onOpenCaregiver: () => void;
   onOpenDocuments: () => void;
@@ -58,6 +60,7 @@ function getPendingCaregiverText(count: number) {
 export default function PatientHome({
   apiUrl,
   user,
+  onOpenHome,
   onOpenDecisions,
   onOpenCaregiver,
   onOpenDocuments,
@@ -211,20 +214,15 @@ export default function PatientHome({
           <div className="home-brand">MyVontade</div>
 
           <div className="home-header-actions">
-            <button
-              className="home-account-link"
-              type="button"
-              onClick={onOpenAccount}
-            >
-              Conta
-            </button>
-            <button
-              className="home-logout-button"
-              type="button"
-              onClick={onLogout}
-            >
-              Terminar sessão
-            </button>
+            <PatientNavigationMenu
+              currentScreen="home"
+              onOpenHome={onOpenHome}
+              onOpenDecisions={onOpenDecisions}
+              onOpenCaregiver={onOpenCaregiver}
+              onOpenDocuments={onOpenDocuments}
+              onOpenAccount={onOpenAccount}
+              onLogout={onLogout}
+            />
           </div>
         </div>
       </header>
@@ -232,36 +230,6 @@ export default function PatientHome({
       <main className="home-main">
         <section className="home-intro-card">
           <h1 className="home-title">Olá, {getFirstName(user.name)}</h1>
-        </section>
-
-        <section className="home-section home-actions-panel">
-          <div className="home-section-header">
-            <h2>Ações rápidas</h2>
-          </div>
-
-          <div className="home-actions-grid">
-            <button
-              className="home-action-button"
-              type="button"
-              onClick={onOpenDecisions}
-            >
-              Preencher diretivas
-            </button>
-            <button
-              className="home-action-button"
-              type="button"
-              onClick={onOpenCaregiver}
-            >
-              Cuidador
-            </button>
-            <button
-              className="home-action-button"
-              type="button"
-              onClick={onOpenDocuments}
-            >
-              Carregar documento
-            </button>
-          </div>
         </section>
 
         <section

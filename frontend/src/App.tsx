@@ -82,6 +82,17 @@ export default function App() {
     setScreen("documents");
   };
 
+  const patientNavigation =
+    currentUser?.role === "patient"
+      ? {
+          onOpenHome: goToHome,
+          onOpenDecisions: goToDecisions,
+          onOpenCaregiver: goToCaregiver,
+          onOpenDocuments: goToDocuments,
+          onOpenAccount: goToAccount,
+        }
+      : undefined;
+
   const handleLogout = () => {
     setCurrentUser(null);
     setMessage("");
@@ -179,6 +190,7 @@ export default function App() {
           onAccountDeleted={handleAccountDeleted}
           onLogout={handleLogout}
           onUserUpdated={setCurrentUser}
+          patientNavigation={patientNavigation}
         />
       );
     }
@@ -188,7 +200,10 @@ export default function App() {
         <DecisionsPage
           apiUrl={API_URL}
           user={currentUser}
-          onBack={goToHome}
+          onOpenHome={goToHome}
+          onOpenDecisions={goToDecisions}
+          onOpenCaregiver={goToCaregiver}
+          onOpenDocuments={goToDocuments}
           onOpenAccount={goToAccount}
           onLogout={handleLogout}
         />
@@ -200,7 +215,10 @@ export default function App() {
         <DocumentsPage
           apiUrl={API_URL}
           user={currentUser}
-          onBack={goToHome}
+          onOpenHome={goToHome}
+          onOpenDecisions={goToDecisions}
+          onOpenCaregiver={goToCaregiver}
+          onOpenDocuments={goToDocuments}
           onOpenAccount={goToAccount}
           onLogout={handleLogout}
         />
@@ -212,7 +230,10 @@ export default function App() {
         <PatientCaregiverPage
           apiUrl={API_URL}
           user={currentUser}
-          onBack={goToHome}
+          onOpenHome={goToHome}
+          onOpenDecisions={goToDecisions}
+          onOpenCaregiver={goToCaregiver}
+          onOpenDocuments={goToDocuments}
           onOpenAccount={goToAccount}
           onLogout={handleLogout}
         />
@@ -244,6 +265,7 @@ export default function App() {
       <PatientHome
         apiUrl={API_URL}
         user={currentUser}
+        onOpenHome={goToHome}
         onOpenDecisions={goToDecisions}
         onOpenCaregiver={goToCaregiver}
         onOpenDocuments={goToDocuments}

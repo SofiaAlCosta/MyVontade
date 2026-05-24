@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import PatientNavigationMenu from "../components/PatientNavigationMenu";
 import type { PatientCaregiverLink, User } from "../types/user";
 import { hasValidEmailFormat } from "../utils/profile";
 import "./patientModule.css";
@@ -6,7 +7,10 @@ import "./patientModule.css";
 type PatientCaregiverPageProps = {
   apiUrl: string;
   user: User;
-  onBack: () => void;
+  onOpenHome: () => void;
+  onOpenDecisions: () => void;
+  onOpenCaregiver: () => void;
+  onOpenDocuments: () => void;
   onOpenAccount: () => void;
   onLogout: () => void;
 };
@@ -81,7 +85,10 @@ function getStatusLabel(status: PatientCaregiverLink["status"]) {
 export default function PatientCaregiverPage({
   apiUrl,
   user,
-  onBack,
+  onOpenHome,
+  onOpenDecisions,
+  onOpenCaregiver,
+  onOpenDocuments,
   onOpenAccount,
   onLogout,
 }: PatientCaregiverPageProps) {
@@ -274,19 +281,15 @@ export default function PatientCaregiverPage({
         <div className="module-brand">MyVontade</div>
 
         <div className="module-header-actions">
-          <button className="module-header-button" type="button" onClick={onBack}>
-            Início
-          </button>
-          <button
-            className="module-header-button"
-            type="button"
-            onClick={onOpenAccount}
-          >
-            Conta
-          </button>
-          <button className="module-header-button" type="button" onClick={onLogout}>
-            Terminar sessão
-          </button>
+          <PatientNavigationMenu
+            currentScreen="caregiver"
+            onOpenHome={onOpenHome}
+            onOpenDecisions={onOpenDecisions}
+            onOpenCaregiver={onOpenCaregiver}
+            onOpenDocuments={onOpenDocuments}
+            onOpenAccount={onOpenAccount}
+            onLogout={onLogout}
+          />
         </div>
       </header>
 
