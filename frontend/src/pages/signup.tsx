@@ -1,4 +1,12 @@
 import { useState } from "react";
+import {
+  formatDoctorLicenseValue,
+  formatNineDigitValue,
+  getRoleLabel,
+  hasValidDoctorLicenseFormat,
+  hasValidEmailFormat,
+  hasValidNineDigitFormat,
+} from "../utils/profile";
 import "./signup.css";
 
 type SignupFormData = {
@@ -22,15 +30,7 @@ type SignupProps = {
 
 type SignupErrors = Partial<Record<keyof SignupFormData, string>>;
 
-const roleOptions = [
-  { value: "patient", label: "Paciente" },
-  { value: "doctor", label: "Médico" },
-  { value: "caregiver", label: "Cuidador" },
-];
-
-const emailPattern = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
-const nineDigitPattern = /^\d{9}$/;
-const doctorLicensePattern = /^\d{4,6}$/;
+const roleOptions = ["patient", "doctor", "caregiver"] as const;
 const passwordRules = [
   {
     label: "Pelo menos 8 caracteres",
@@ -49,20 +49,6 @@ const passwordRules = [
     test: (value: string) => /\d/.test(value),
   },
 ] as const;
-
-function formatNineDigitValue(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 9);
-  const parts = digits.match(/.{1,3}/g);
-  return parts?.join(" ") ?? "";
-}
-
-function formatDoctorLicenseValue(value: string) {
-  return value.replace(/\D/g, "").slice(0, 6);
-}
-
-function hasValidEmailFormat(value: string) {
-  return emailPattern.test(value.trim());
-}
 
 function getEmailValidationMessage(value: string) {
   if (!value.trim()) {
@@ -92,25 +78,12 @@ function getPasswordValidationMessage(value: string) {
   return "";
 }
 
-function hasValidNineDigitFormat(value: string) {
-  return nineDigitPattern.test(value.replace(/\D/g, ""));
-}
-
-function hasValidDoctorLicenseFormat(value: string) {
-  return doctorLicensePattern.test(value.replace(/\D/g, ""));
-}
-
-function getRoleLabel(role: string) {
-  return roleOptions.find((option) => option.value === role)?.label ?? "Utilizador";
-}
-
 export default function Signup({
   message,
   onSignup,
   onGoToLogin,
 }: SignupProps) {
   const [role, setRole] = useState("");
-  const isRoleSelected = role !== "";
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -123,6 +96,9 @@ export default function Signup({
   const [errors, setErrors] = useState<SignupErrors>({});
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
 
+  const isRoleSelected = role !== "";
+  const shouldShowPasswordRules = isPasswordFocused || Boolean(errors.password);
+
   const clearError = (field: keyof SignupFormData) => {
     setErrors((currentErrors) => {
       if (!currentErrors[field]) {
@@ -132,6 +108,28 @@ export default function Signup({
       const nextErrors = { ...currentErrors };
       delete nextErrors[field];
       return nextErrors;
+    });
+  };
+
+  const applyValidationMessage = (
+    field: keyof SignupFormData,
+    validationMessage: string
+  ) => {
+    setErrors((currentErrors) => {
+      if (!validationMessage) {
+        if (!currentErrors[field]) {
+          return currentErrors;
+        }
+
+        const nextErrors = { ...currentErrors };
+        delete nextErrors[field];
+        return nextErrors;
+      }
+
+      return {
+        ...currentErrors,
+        [field]: validationMessage,
+      };
     });
   };
 
@@ -205,14 +203,18 @@ export default function Signup({
     return nextErrors;
   };
 
-  const handleRoleSelect = (selectedRole: string) => {
-    setRole(selectedRole);
+  const resetRoleSpecificFields = () => {
     setPatientNumber("");
     setDateOfBirth("");
     setProfessionalLicense("");
     setSpecialty("");
     setRelationshipToPatient("");
     setErrors({});
+  };
+
+  const handleRoleSelect = (selectedRole: string) => {
+    setRole(selectedRole);
+    resetRoleSpecificFields();
   };
 
   const handleSignup = async () => {
@@ -242,24 +244,7 @@ export default function Signup({
       return;
     }
 
-    const emailValidationMessage = getEmailValidationMessage(email);
-
-    setErrors((currentErrors) => {
-      if (!emailValidationMessage) {
-        if (!currentErrors.email) {
-          return currentErrors;
-        }
-
-        const nextErrors = { ...currentErrors };
-        delete nextErrors.email;
-        return nextErrors;
-      }
-
-      return {
-        ...currentErrors,
-        email: emailValidationMessage,
-      };
-    });
+    applyValidationMessage("email", getEmailValidationMessage(email));
   };
 
   const handlePasswordBlur = () => {
@@ -269,27 +254,8 @@ export default function Signup({
       return;
     }
 
-    const passwordValidationMessage = getPasswordValidationMessage(password);
-
-    setErrors((currentErrors) => {
-      if (!passwordValidationMessage) {
-        if (!currentErrors.password) {
-          return currentErrors;
-        }
-
-        const nextErrors = { ...currentErrors };
-        delete nextErrors.password;
-        return nextErrors;
-      }
-
-      return {
-        ...currentErrors,
-        password: passwordValidationMessage,
-      };
-    });
+    applyValidationMessage("password", getPasswordValidationMessage(password));
   };
-
-  const shouldShowPasswordRules = isPasswordFocused || Boolean(errors.password);
 
   return (
     <div className="signup-page">
@@ -326,12 +292,12 @@ export default function Signup({
               <div className="role-list">
                 {roleOptions.map((option) => (
                   <button
-                    key={option.value}
+                    key={option}
                     className="role-button"
                     type="button"
-                    onClick={() => handleRoleSelect(option.value)}
+                    onClick={() => handleRoleSelect(option)}
                   >
-                    {option.label}
+                    {getRoleLabel(option)}
                   </button>
                 ))}
               </div>
@@ -368,8 +334,8 @@ export default function Signup({
                     required
                     aria-invalid={Boolean(errors.name)}
                     value={name}
-                    onChange={(e) => {
-                      setName(e.target.value);
+                    onChange={(event) => {
+                      setName(event.target.value);
                       clearError("name");
                     }}
                     className={errors.name ? "input-error" : ""}
@@ -389,8 +355,8 @@ export default function Signup({
                     required
                     aria-invalid={Boolean(errors.email)}
                     value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
+                    onChange={(event) => {
+                      setEmail(event.target.value);
                       clearError("email");
                     }}
                     onBlur={handleEmailBlur}
@@ -413,8 +379,8 @@ export default function Signup({
                     aria-invalid={Boolean(errors.password)}
                     value={password}
                     onFocus={() => setIsPasswordFocused(true)}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
+                    onChange={(event) => {
+                      setPassword(event.target.value);
                       clearError("password");
                     }}
                     onBlur={handlePasswordBlur}
@@ -425,22 +391,18 @@ export default function Signup({
                     <div className="password-rules" aria-live="polite">
                       <p className="password-rules-title">A palavra-passe deve ter:</p>
                       <ul className="password-rules-list">
-                        {passwordRules.map((rule) => {
-                          const isRuleMet = rule.test(password);
-
-                          return (
-                            <li
-                              key={rule.label}
-                              className={
-                                isRuleMet
-                                  ? "password-rule password-rule-valid"
-                                  : "password-rule"
-                              }
-                            >
-                              {rule.label}
-                            </li>
-                          );
-                        })}
+                        {passwordRules.map((rule) => (
+                          <li
+                            key={rule.label}
+                            className={
+                              rule.test(password)
+                                ? "password-rule password-rule-valid"
+                                : "password-rule"
+                            }
+                          >
+                            {rule.label}
+                          </li>
+                        ))}
                       </ul>
                     </div>
                   )}
@@ -465,8 +427,8 @@ export default function Signup({
                         required
                         aria-invalid={Boolean(errors.patientNumber)}
                         value={patientNumber}
-                        onChange={(e) => {
-                          setPatientNumber(formatNineDigitValue(e.target.value));
+                        onChange={(event) => {
+                          setPatientNumber(formatNineDigitValue(event.target.value));
                           clearError("patientNumber");
                         }}
                         className={errors.patientNumber ? "input-error" : ""}
@@ -485,8 +447,8 @@ export default function Signup({
                         required
                         aria-invalid={Boolean(errors.dateOfBirth)}
                         value={dateOfBirth}
-                        onChange={(e) => {
-                          setDateOfBirth(e.target.value);
+                        onChange={(event) => {
+                          setDateOfBirth(event.target.value);
                           clearError("dateOfBirth");
                         }}
                         className={errors.dateOfBirth ? "input-error" : ""}
@@ -508,8 +470,8 @@ export default function Signup({
                         required
                         aria-invalid={Boolean(errors.phoneNumber)}
                         value={phoneNumber}
-                        onChange={(e) => {
-                          setPhoneNumber(formatNineDigitValue(e.target.value));
+                        onChange={(event) => {
+                          setPhoneNumber(formatNineDigitValue(event.target.value));
                           clearError("phoneNumber");
                         }}
                         className={errors.phoneNumber ? "input-error" : ""}
@@ -539,9 +501,9 @@ export default function Signup({
                         required
                         aria-invalid={Boolean(errors.professionalLicense)}
                         value={professionalLicense}
-                        onChange={(e) => {
+                        onChange={(event) => {
                           setProfessionalLicense(
-                            formatDoctorLicenseValue(e.target.value)
+                            formatDoctorLicenseValue(event.target.value)
                           );
                           clearError("professionalLicense");
                         }}
@@ -562,8 +524,8 @@ export default function Signup({
                         required
                         aria-invalid={Boolean(errors.specialty)}
                         value={specialty}
-                        onChange={(e) => {
-                          setSpecialty(e.target.value);
+                        onChange={(event) => {
+                          setSpecialty(event.target.value);
                           clearError("specialty");
                         }}
                         className={errors.specialty ? "input-error" : ""}
@@ -585,8 +547,8 @@ export default function Signup({
                         required
                         aria-invalid={Boolean(errors.phoneNumber)}
                         value={phoneNumber}
-                        onChange={(e) => {
-                          setPhoneNumber(formatNineDigitValue(e.target.value));
+                        onChange={(event) => {
+                          setPhoneNumber(formatNineDigitValue(event.target.value));
                           clearError("phoneNumber");
                         }}
                         className={errors.phoneNumber ? "input-error" : ""}
@@ -614,8 +576,8 @@ export default function Signup({
                         required
                         aria-invalid={Boolean(errors.relationshipToPatient)}
                         value={relationshipToPatient}
-                        onChange={(e) => {
-                          setRelationshipToPatient(e.target.value);
+                        onChange={(event) => {
+                          setRelationshipToPatient(event.target.value);
                           clearError("relationshipToPatient");
                         }}
                         className={errors.relationshipToPatient ? "input-error" : ""}
@@ -637,8 +599,8 @@ export default function Signup({
                         required
                         aria-invalid={Boolean(errors.phoneNumber)}
                         value={phoneNumber}
-                        onChange={(e) => {
-                          setPhoneNumber(formatNineDigitValue(e.target.value));
+                        onChange={(event) => {
+                          setPhoneNumber(formatNineDigitValue(event.target.value));
                           clearError("phoneNumber");
                         }}
                         className={errors.phoneNumber ? "input-error" : ""}
@@ -664,8 +626,8 @@ export default function Signup({
             Já tens conta?{" "}
             <a
               href="#"
-              onClick={(e) => {
-                e.preventDefault();
+              onClick={(event) => {
+                event.preventDefault();
                 onGoToLogin();
               }}
             >
