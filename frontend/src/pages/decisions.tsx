@@ -16,6 +16,14 @@ type DecisionsPageProps = {
 
 type DecisionsErrors = Partial<Record<keyof PatientDecisions, string>>;
 type MessageTone = "success" | "error";
+type DecisionFieldKey =
+  | "resuscitationPreference"
+  | "artificialFeedingPreference"
+  | "painManagementPreference";
+type DecisionOption = {
+  value: string;
+  label: string;
+};
 
 const initialFormData: PatientDecisions = {
   resuscitationPreference: "",
@@ -45,6 +53,130 @@ const painManagementOptions = [
   },
 ];
 
+type DecisionSelectProps = {
+  field: DecisionFieldKey;
+  label: string;
+  value: string;
+  options: DecisionOption[];
+  error?: string;
+  isOpen: boolean;
+  disabled?: boolean;
+  onOpen: (field: DecisionFieldKey) => void;
+  onClose: () => void;
+  onChange: (field: DecisionFieldKey, value: string) => void;
+};
+
+function DecisionSelect({
+  field,
+  label,
+  value,
+  options,
+  error,
+  isOpen,
+  disabled = false,
+  onOpen,
+  onClose,
+  onChange,
+}: DecisionSelectProps) {
+  const selectedOption = options.find((option) => option.value === value) ?? null;
+  const displayValue = selectedOption?.label || "Seleciona uma opção";
+
+  return (
+    <div className="module-field">
+      <div className="module-field-label">
+        <span>{label}</span>
+        {error && <span className="module-field-error">{error}</span>}
+      </div>
+
+      <div
+        className="module-dropdown-shell"
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+            onClose();
+          }
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            onClose();
+          }
+        }}
+      >
+        <button
+          type="button"
+          aria-expanded={isOpen}
+          aria-haspopup="listbox"
+          aria-invalid={Boolean(error)}
+          className={`module-dropdown-button ${
+            error ? "module-input-error" : ""
+          } ${isOpen ? "module-dropdown-button-open" : ""}`}
+          disabled={disabled}
+          onClick={() => {
+            if (isOpen) {
+              onClose();
+              return;
+            }
+
+            onOpen(field);
+          }}
+        >
+          <span
+            className={`module-dropdown-button-text ${
+              selectedOption ? "" : "module-dropdown-button-text-placeholder"
+            }`}
+          >
+            {displayValue}
+          </span>
+          <span
+            aria-hidden="true"
+            className={`module-dropdown-caret ${
+              isOpen ? "module-dropdown-caret-open" : ""
+            }`}
+          />
+        </button>
+
+        {isOpen && (
+          <div className="module-dropdown-menu" role="listbox" aria-label={label}>
+            <button
+              type="button"
+              role="option"
+              aria-selected={!selectedOption}
+              className={`module-dropdown-option ${
+                !selectedOption ? "module-dropdown-option-selected" : ""
+              }`}
+              onMouseDown={(event) => {
+                event.preventDefault();
+                onChange(field, "");
+                onClose();
+              }}
+            >
+              Seleciona uma opção
+            </button>
+
+            {options.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                role="option"
+                aria-selected={value === option.value}
+                className={`module-dropdown-option ${
+                  value === option.value ? "module-dropdown-option-selected" : ""
+                }`}
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  onChange(field, option.value);
+                  onClose();
+                }}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function hasSameFormData(left: PatientDecisions, right: PatientDecisions) {
   return (
     left.resuscitationPreference === right.resuscitationPreference &&
@@ -60,20 +192,6 @@ function getFilledDecisionCount(formData: PatientDecisions) {
     formData.artificialFeedingPreference,
     formData.painManagementPreference,
   ].filter((value) => value.trim()).length;
-}
-
-function getSummaryStatus(formData: PatientDecisions) {
-  const filledCount = getFilledDecisionCount(formData);
-
-  if (filledCount === 0) {
-    return "Por preencher";
-  }
-
-  if (filledCount < 3) {
-    return "Em curso";
-  }
-
-  return "Concluídas";
 }
 
 function getDecisionsMessage(error: string | undefined) {
@@ -110,10 +228,10 @@ export default function DecisionsPage({
   const [messageTone, setMessageTone] = useState<MessageTone>("success");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [openField, setOpenField] = useState<DecisionFieldKey | null>(null);
 
   const hasChanges = !isLoading && !hasSameFormData(formData, savedFormData);
   const filledDecisionCount = getFilledDecisionCount(formData);
-  const summaryStatus = getSummaryStatus(formData);
 
   useEffect(() => {
     let ignore = false;
@@ -267,6 +385,7 @@ export default function DecisionsPage({
       setErrors({});
       setMessage("Decisões guardadas com sucesso.");
       setMessageTone("success");
+      setOpenField(null);
     } catch {
       setMessage("Não foi possível guardar as tuas decisões.");
       setMessageTone("error");
@@ -294,11 +413,8 @@ export default function DecisionsPage({
       </header>
 
       <main className="module-main">
-        <section className="module-intro-card">
+        <section className="module-intro-card module-intro-card-minimal">
           <h1 className="module-title">As Minhas Decisões</h1>
-          <p className="module-description">
-            Define aqui as tuas diretivas principais.
-          </p>
         </section>
 
         <div className="module-grid">
@@ -319,93 +435,48 @@ export default function DecisionsPage({
               )}
 
               <fieldset className="module-fieldset" disabled={isLoading || isSaving}>
-                <label className="module-field">
-                  <div className="module-field-label">
-                    <span>Reanimação</span>
-                    {errors.resuscitationPreference && (
-                      <span className="module-field-error">
-                        {errors.resuscitationPreference}
-                      </span>
-                    )}
-                  </div>
-                  <select
-                    value={formData.resuscitationPreference}
-                    aria-invalid={Boolean(errors.resuscitationPreference)}
-                    className={
-                      errors.resuscitationPreference ? "module-input-error" : ""
-                    }
-                    onChange={(event) =>
-                      updateField("resuscitationPreference", event.target.value)
-                    }
-                  >
-                    <option value="">Seleciona uma opção</option>
-                    {resuscitationOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <DecisionSelect
+                  field="resuscitationPreference"
+                  label="Reanimação"
+                  value={formData.resuscitationPreference}
+                  options={resuscitationOptions}
+                  error={errors.resuscitationPreference}
+                  isOpen={openField === "resuscitationPreference"}
+                  disabled={isLoading || isSaving}
+                  onOpen={setOpenField}
+                  onClose={() => setOpenField(null)}
+                  onChange={updateField}
+                />
+
+                <DecisionSelect
+                  field="artificialFeedingPreference"
+                  label="Alimentação artificial"
+                  value={formData.artificialFeedingPreference}
+                  options={artificialFeedingOptions}
+                  error={errors.artificialFeedingPreference}
+                  isOpen={openField === "artificialFeedingPreference"}
+                  disabled={isLoading || isSaving}
+                  onOpen={setOpenField}
+                  onClose={() => setOpenField(null)}
+                  onChange={updateField}
+                />
+
+                <DecisionSelect
+                  field="painManagementPreference"
+                  label="Quero sentir menos dor ou ficar mais alerta?"
+                  value={formData.painManagementPreference}
+                  options={painManagementOptions}
+                  error={errors.painManagementPreference}
+                  isOpen={openField === "painManagementPreference"}
+                  disabled={isLoading || isSaving}
+                  onOpen={setOpenField}
+                  onClose={() => setOpenField(null)}
+                  onChange={updateField}
+                />
 
                 <label className="module-field">
                   <div className="module-field-label">
-                    <span>Alimentação artificial</span>
-                    {errors.artificialFeedingPreference && (
-                      <span className="module-field-error">
-                        {errors.artificialFeedingPreference}
-                      </span>
-                    )}
-                  </div>
-                  <select
-                    value={formData.artificialFeedingPreference}
-                    aria-invalid={Boolean(errors.artificialFeedingPreference)}
-                    className={
-                      errors.artificialFeedingPreference ? "module-input-error" : ""
-                    }
-                    onChange={(event) =>
-                      updateField("artificialFeedingPreference", event.target.value)
-                    }
-                  >
-                    <option value="">Seleciona uma opção</option>
-                    {artificialFeedingOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="module-field">
-                  <div className="module-field-label">
-                    <span>Quero sentir menos dor ou ficar mais alerta?</span>
-                    {errors.painManagementPreference && (
-                      <span className="module-field-error">
-                        {errors.painManagementPreference}
-                      </span>
-                    )}
-                  </div>
-                  <select
-                    value={formData.painManagementPreference}
-                    aria-invalid={Boolean(errors.painManagementPreference)}
-                    className={
-                      errors.painManagementPreference ? "module-input-error" : ""
-                    }
-                    onChange={(event) =>
-                      updateField("painManagementPreference", event.target.value)
-                    }
-                  >
-                    <option value="">Seleciona uma opção</option>
-                    {painManagementOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="module-field">
-                  <div className="module-field-label">
-                    <span>Notas</span>
+                    <span>Notas opcionais</span>
                   </div>
                   <textarea
                     rows={4}
@@ -443,14 +514,6 @@ export default function DecisionsPage({
             <h2 className="module-card-title">Resumo atual</h2>
 
             <div className="module-meta-list">
-              <div className="module-meta-row">
-                <p className="module-meta-label">Paciente</p>
-                <p className="module-meta-value">{user.name}</p>
-              </div>
-              <div className="module-meta-row">
-                <p className="module-meta-label">Estado</p>
-                <p className="module-meta-value">{summaryStatus}</p>
-              </div>
               <div className="module-meta-row">
                 <p className="module-meta-label">Preenchidas</p>
                 <p className="module-meta-value">{filledDecisionCount} de 3</p>

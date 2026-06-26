@@ -112,6 +112,108 @@ function getFileBadgeLabel(fileName: string) {
   return extension.slice(0, 4);
 }
 
+function DocumentTypeSelect({
+  value,
+  options,
+  isOpen,
+  onOpen,
+  onClose,
+  onChange,
+}: {
+  value: string;
+  options: string[];
+  isOpen: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div
+      className="module-dropdown-shell"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          onClose();
+        }
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          onClose();
+        }
+      }}
+    >
+      <button
+        type="button"
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        className={`module-dropdown-button ${
+          isOpen ? "module-dropdown-button-open" : ""
+        }`}
+        onClick={() => {
+          if (isOpen) {
+            onClose();
+            return;
+          }
+
+          onOpen();
+        }}
+      >
+        <span
+          className={`module-dropdown-button-text ${
+            value ? "" : "module-dropdown-button-text-placeholder"
+          }`}
+        >
+          {value || "Seleciona uma opção"}
+        </span>
+        <span
+          aria-hidden="true"
+          className={`module-dropdown-caret ${
+            isOpen ? "module-dropdown-caret-open" : ""
+          }`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="module-dropdown-menu" role="listbox" aria-label="Tipo de documento">
+          <button
+            type="button"
+            role="option"
+            aria-selected={!value}
+            className={`module-dropdown-option ${
+              !value ? "module-dropdown-option-selected" : ""
+            }`}
+            onMouseDown={(event) => {
+              event.preventDefault();
+              onChange("");
+              onClose();
+            }}
+          >
+            Seleciona uma opção
+          </button>
+
+          {options.map((option) => (
+            <button
+              key={option}
+              type="button"
+              role="option"
+              aria-selected={value === option}
+              className={`module-dropdown-option ${
+                value === option ? "module-dropdown-option-selected" : ""
+              }`}
+              onMouseDown={(event) => {
+                event.preventDefault();
+                onChange(option);
+                onClose();
+              }}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DocumentsPage({
   apiUrl,
   user,
@@ -133,6 +235,7 @@ export default function DocumentsPage({
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
+  const [isDocumentTypeOpen, setIsDocumentTypeOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const canSubmit = Boolean(formData.title.trim() && selectedFile);
@@ -287,6 +390,7 @@ export default function DocumentsPage({
       setDocuments((currentDocuments) => [createdDocument, ...currentDocuments]);
       setFormData(initialFormData);
       setSelectedFile(null);
+      setIsDocumentTypeOpen(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -394,11 +498,8 @@ export default function DocumentsPage({
       </header>
 
       <main className="module-main">
-        <section className="module-intro-card">
+        <section className="module-intro-card module-intro-card-minimal">
           <h1 className="module-title">Documentos</h1>
-          <p className="module-description">
-            Carrega aqui os teus documentos.
-          </p>
         </section>
 
         <div className="module-grid">
@@ -439,19 +540,14 @@ export default function DocumentsPage({
                   <div className="module-field-label">
                     <span>Tipo de documento</span>
                   </div>
-                  <select
+                  <DocumentTypeSelect
                     value={formData.documentType}
-                    onChange={(event) =>
-                      updateField("documentType", event.target.value)
-                    }
-                  >
-                    <option value="">Seleciona uma opção</option>
-                    {documentTypeOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
+                    options={documentTypeOptions}
+                    isOpen={isDocumentTypeOpen}
+                    onOpen={() => setIsDocumentTypeOpen(true)}
+                    onClose={() => setIsDocumentTypeOpen(false)}
+                    onChange={(value) => updateField("documentType", value)}
+                  />
                 </label>
 
                 <label className="module-field">
@@ -461,14 +557,31 @@ export default function DocumentsPage({
                       <span className="module-field-error">{errors.file}</span>
                     )}
                   </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept={acceptedDocumentTypes}
-                    aria-invalid={Boolean(errors.file)}
-                    className={errors.file ? "module-input-error" : ""}
-                    onChange={handleFileSelection}
-                  />
+                  <div className={`module-file-picker ${errors.file ? "module-input-error" : ""}`}>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept={acceptedDocumentTypes}
+                      aria-invalid={Boolean(errors.file)}
+                      className="module-file-input-hidden"
+                      onChange={handleFileSelection}
+                    />
+                    <button
+                      className="module-file-picker-button"
+                      type="button"
+                      disabled={isLoading || isSaving}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      Escolher ficheiro
+                    </button>
+                    <span
+                      className={`module-file-picker-name ${
+                        selectedFile ? "" : "module-file-picker-name-placeholder"
+                      }`}
+                    >
+                      {selectedFile ? selectedFile.name : "Nenhum ficheiro selecionado"}
+                    </span>
+                  </div>
                 </label>
 
                 {selectedFile && (
@@ -511,10 +624,6 @@ export default function DocumentsPage({
             <h2 className="module-card-title">Resumo atual</h2>
 
             <div className="module-meta-list">
-              <div className="module-meta-row">
-                <p className="module-meta-label">Paciente</p>
-                <p className="module-meta-value">{user.name}</p>
-              </div>
               <div className="module-meta-row">
                 <p className="module-meta-label">Total</p>
                 <p className="module-meta-value">

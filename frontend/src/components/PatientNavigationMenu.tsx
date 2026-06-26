@@ -53,7 +53,7 @@ export default function PatientNavigationMenu({
 
   const menuItems = [
     { key: "home", label: "Início", onSelect: onOpenHome },
-    { key: "decisions", label: "Diretivas", onSelect: onOpenDecisions },
+    { key: "decisions", label: "Decisões", onSelect: onOpenDecisions },
     { key: "caregiver", label: "Cuidador", onSelect: onOpenCaregiver },
     { key: "documents", label: "Documentos", onSelect: onOpenDocuments },
     { key: "account", label: "Conta", onSelect: onOpenAccount },

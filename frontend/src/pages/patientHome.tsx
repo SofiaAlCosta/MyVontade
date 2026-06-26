@@ -206,6 +206,12 @@ export default function PatientHome({
     pendingCaregiverLinks[0]?.createdAt ||
     "";
   const connectedDoctorCount = 0;
+  const latestDocumentText = latestDocument
+    ? formatDateTime(latestDocument.uploadedAt)
+    : "Sem registo";
+  const latestCaregiverActivityText = latestCaregiverActivity
+    ? formatDateTime(latestCaregiverActivity)
+    : "Sem registo";
 
   return (
     <div className="home-page">
@@ -228,105 +234,126 @@ export default function PatientHome({
       </header>
 
       <main className="home-main">
-        <section className="home-intro-card">
+        <section className="home-intro-card home-intro-card-minimal">
           <h1 className="home-title">Olá, {getFirstName(user.name)}</h1>
         </section>
 
-        <section
-          className={`home-overview-grid ${
-            hasPendingChecklist ? "" : "home-overview-grid-compact"
-          }`}
-        >
-          {hasPendingChecklist && (
-            <article className="home-overview-card home-overview-card-wide">
-              <div className="home-section-header">
-                <h2>O que falta tratar</h2>
-              </div>
+        <section className="home-section home-panel-card home-priority-panel">
+          <div className="home-section-header">
+            <h2>Decisões principais</h2>
+          </div>
 
-              <div className="home-overview-checklist">
-                {pendingChecklistItems.map((item) => (
-                  <div key={item} className="home-overview-check-row">
-                    <span className="home-overview-check-dot" />
-                    <p className="home-overview-check-text">{item}</p>
+          <div className="home-decision-list home-decision-list-priority">
+            {decisionsSummary.map((decision) => {
+              const isDefined = decision.value.trim() !== "Por definir";
+
+              return (
+                <div
+                  key={decision.label}
+                  className={`home-decision-row ${
+                    isDefined
+                      ? "home-decision-row-defined"
+                      : "home-decision-row-pending"
+                  }`}
+                >
+                  <span className="home-decision-label">{decision.label}</span>
+
+                  <div className="home-decision-meta">
+                    <strong className="home-decision-value">
+                      {decision.value}
+                    </strong>
+                    <span
+                      className={`home-decision-state-pill ${
+                        isDefined
+                          ? "home-decision-state-pill-defined"
+                          : "home-decision-state-pill-pending"
+                      }`}
+                    >
+                      {isDefined ? "Definida" : "Pendente"}
+                    </span>
                   </div>
-                ))}
-              </div>
-            </article>
-          )}
-
-          <article className="home-overview-card">
-            <div className="home-section-header">
-              <h2>Quem tem acesso</h2>
-            </div>
-
-            <div className="home-overview-list">
-              <div className="home-overview-item">
-                <p className="home-overview-label">Cuidadores ativos</p>
-                <strong className="home-overview-value">
-                  {activeCaregiverLinks.length}
-                </strong>
-              </div>
-              <div className="home-overview-item">
-                <p className="home-overview-label">Convites pendentes</p>
-                <strong className="home-overview-value">
-                  {pendingCaregiverLinks.length}
-                </strong>
-              </div>
-              <div className="home-overview-item">
-                <p className="home-overview-label">Médicos ligados</p>
-                <strong className="home-overview-value">
-                  {connectedDoctorCount}
-                </strong>
-              </div>
-            </div>
-          </article>
-
-          <article className="home-overview-card">
-            <div className="home-section-header">
-              <h2>Últimas atualizações</h2>
-            </div>
-
-            <div className="home-overview-list">
-              <div className="home-overview-item">
-                <p className="home-overview-label">Diretivas definidas</p>
-                <strong className="home-overview-value">
-                  {completedDecisionCount}/3
-                </strong>
-              </div>
-              <div className="home-overview-item">
-                <p className="home-overview-label">Último documento</p>
-                <strong className="home-overview-value">
-                  {latestDocument
-                    ? formatDateTime(latestDocument.uploadedAt)
-                    : "Sem registo"}
-                </strong>
-              </div>
-              <div className="home-overview-item">
-                <p className="home-overview-label">Última ligação</p>
-                <strong className="home-overview-value">
-                  {latestCaregiverActivity
-                    ? formatDateTime(latestCaregiverActivity)
-                    : "Sem registo"}
-                </strong>
-              </div>
-            </div>
-          </article>
+                </div>
+              );
+            })}
+          </div>
         </section>
 
         <div className="home-content-stack">
-          <section className="home-section home-panel-card">
-            <div className="home-section-header">
-              <h2>Decisões principais</h2>
-            </div>
-
-            <div className="home-decision-list">
-              {decisionsSummary.map((decision) => (
-                <div key={decision.label} className="home-decision-row">
-                  <span className="home-decision-label">{decision.label}</span>
-                  <strong className="home-decision-value">{decision.value}</strong>
+          <section
+            className={`home-overview-grid ${
+              hasPendingChecklist ? "" : "home-overview-grid-compact"
+            }`}
+          >
+            {hasPendingChecklist && (
+              <article className="home-overview-card home-overview-card-wide">
+                <div className="home-section-header">
+                  <h2>O que falta tratar</h2>
                 </div>
-              ))}
-            </div>
+
+                <div className="home-overview-checklist">
+                  {pendingChecklistItems.map((item) => (
+                    <div key={item} className="home-overview-check-row">
+                      <span className="home-overview-check-dot" />
+                      <p className="home-overview-check-text">{item}</p>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            )}
+
+            <article className="home-overview-card home-overview-card-caregiver-access">
+              <div className="home-section-header">
+                <h2>Quem tem acesso</h2>
+              </div>
+
+              <div className="home-overview-list">
+                <div className="home-overview-item">
+                  <p className="home-overview-label">Cuidadores ativos</p>
+                  <strong className="home-overview-value">
+                    {activeCaregiverLinks.length}
+                  </strong>
+                </div>
+                <div className="home-overview-item">
+                  <p className="home-overview-label">Convites pendentes</p>
+                  <strong className="home-overview-value">
+                    {pendingCaregiverLinks.length}
+                  </strong>
+                </div>
+                <div className="home-overview-item">
+                  <p className="home-overview-label">Médicos ligados</p>
+                  <strong className="home-overview-value">
+                    {connectedDoctorCount}
+                  </strong>
+                </div>
+              </div>
+            </article>
+
+            <article className="home-overview-card home-overview-card-activity">
+              <div className="home-section-header">
+                <h2>Últimas atualizações</h2>
+              </div>
+
+              <div className="home-overview-list">
+                <div className="home-overview-item">
+                  <p className="home-overview-label">Diretivas definidas</p>
+                  <strong className="home-overview-value">
+                    {completedDecisionCount}/3
+                  </strong>
+                </div>
+                <div className="home-overview-item">
+                  <p className="home-overview-label">Último documento</p>
+                  <strong className="home-overview-value">
+                    {latestDocumentText}
+                  </strong>
+                </div>
+                <div className="home-overview-item">
+                  <p className="home-overview-label">Última ligação</p>
+                  <strong className="home-overview-value">
+                    {latestCaregiverActivityText}
+                  </strong>
+                </div>
+              </div>
+            </article>
           </section>
 
           <div className="home-association-grid">
@@ -442,12 +469,12 @@ export default function PatientHome({
               )}
             </section>
 
-            <section className="home-section home-panel-card home-caregiver-panel">
+            <section className="home-section home-panel-card home-caregiver-panel home-association-panel-secondary">
               <div className="home-section-header">
                 <h2>Médico</h2>
               </div>
 
-              <div className="home-caregiver-sheet home-association-empty">
+              <div className="home-caregiver-sheet home-association-empty home-association-empty-compact">
                 <div className="home-caregiver-sheet-head">
                   <h3 className="home-caregiver-sheet-title">
                     Ainda não tens médico ligado
