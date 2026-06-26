@@ -120,11 +120,13 @@ export default function Login({
       <section className="info-panel">
         <div>
           <p className="panel-brand">MyVontade</p>
-          <h1 className="panel-title">A tua vontade, com clareza e segurança.</h1>
-          <p className="panel-text">
-            Uma plataforma simples para consultar diretivas, decisões e
-            documentos de saúde.
-          </p>
+          <div className="panel-intro">
+            <h1 className="panel-title">A tua vontade, com clareza e segurança.</h1>
+            <p className="panel-text">
+              Uma plataforma simples para consultar diretivas, decisões e
+              documentos de saúde.
+            </p>
+          </div>
         </div>
 
         <div className="panel-notes">
