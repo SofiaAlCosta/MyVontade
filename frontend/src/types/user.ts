@@ -36,6 +36,11 @@ export type AccountProfile = {
 
 export type DashboardTone = "positive" | "warning" | "calm" | "soft";
 export type CaregiverLinkStatus = "pending" | "active";
+export type CaregiverSharePermissions = {
+  canViewInformation: boolean;
+  canViewDecisions: boolean;
+  canViewDocuments: boolean;
+};
 
 export type DashboardCardKey =
   | "directives"
@@ -92,6 +97,7 @@ export type PatientCaregiverLink = {
   caregiverEmail: string;
   caregiverPhoneNumber: string;
   relationshipToPatient: string;
+  permissions: CaregiverSharePermissions;
   status: CaregiverLinkStatus;
   createdAt: string;
   respondedAt: string;
@@ -106,12 +112,14 @@ export type CaregiverPatientLink = {
   patientNumber: string;
   dateOfBirth: string;
   relationshipToPatient: string;
+  permissions: CaregiverSharePermissions;
   status: CaregiverLinkStatus;
   createdAt: string;
   respondedAt: string;
 };
 
 export type CaregiverPatientOverview = {
+  permissions: CaregiverSharePermissions;
   patient: {
     id: number;
     name: string;
@@ -119,8 +127,8 @@ export type CaregiverPatientOverview = {
     phoneNumber: string;
     patientNumber: string;
     dateOfBirth: string;
-  };
-  dashboard: PatientDashboard;
-  decisions: PatientDecisions;
+  } | null;
+  dashboard: PatientDashboard | null;
+  decisions: PatientDecisions | null;
   documents: PatientDocument[];
 };

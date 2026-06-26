@@ -120,6 +120,11 @@ type AccountRow = {
 
 type DashboardTone = "positive" | "warning" | "calm" | "soft";
 type CaregiverLinkStatus = "pending" | "active";
+type CaregiverSharePermissions = {
+  canViewInformation: boolean;
+  canViewDecisions: boolean;
+  canViewDocuments: boolean;
+};
 
 type PatientDashboardRow = {
   id: number;
@@ -176,6 +181,9 @@ type PatientCaregiverLinkRow = {
   caregiver_email: string;
   caregiver_phone_number: string | null;
   relationship_to_patient: string;
+  can_view_information: boolean;
+  can_view_decisions: boolean;
+  can_view_documents: boolean;
   status: CaregiverLinkStatus;
   created_at: string;
   responded_at: string | null;
@@ -190,9 +198,18 @@ type CaregiverPatientLinkRow = {
   patient_number: string | null;
   date_of_birth: string | null;
   relationship_to_patient: string;
+  can_view_information: boolean;
+  can_view_decisions: boolean;
+  can_view_documents: boolean;
   status: CaregiverLinkStatus;
   created_at: string;
   responded_at: string | null;
+};
+
+type ActiveCaregiverLinkAccessRow = {
+  can_view_information: boolean;
+  can_view_decisions: boolean;
+  can_view_documents: boolean;
 };
 
 async function ensureCaregiverLinksTable() {
@@ -202,6 +219,9 @@ async function ensureCaregiverLinksTable() {
       patient_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       caregiver_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       relationship_to_patient TEXT NOT NULL,
+      can_view_information BOOLEAN NOT NULL DEFAULT TRUE,
+      can_view_decisions BOOLEAN NOT NULL DEFAULT TRUE,
+      can_view_documents BOOLEAN NOT NULL DEFAULT TRUE,
       status TEXT NOT NULL DEFAULT 'pending'
         CHECK (status IN ('pending', 'active', 'revoked')),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -220,6 +240,63 @@ async function ensureCaregiverLinksTable() {
     CREATE INDEX IF NOT EXISTS patient_caregiver_links_caregiver_idx
     ON patient_caregiver_links (caregiver_user_id, status)
   `);
+
+  await pool.query(`
+    ALTER TABLE patient_caregiver_links
+    ADD COLUMN IF NOT EXISTS can_view_information BOOLEAN NOT NULL DEFAULT TRUE
+  `);
+
+  await pool.query(`
+    ALTER TABLE patient_caregiver_links
+    ADD COLUMN IF NOT EXISTS can_view_decisions BOOLEAN NOT NULL DEFAULT TRUE
+  `);
+
+  await pool.query(`
+    ALTER TABLE patient_caregiver_links
+    ADD COLUMN IF NOT EXISTS can_view_documents BOOLEAN NOT NULL DEFAULT TRUE
+  `);
+}
+
+function buildCaregiverSharePermissions(row: {
+  can_view_information: boolean;
+  can_view_decisions: boolean;
+  can_view_documents: boolean;
+}): CaregiverSharePermissions {
+  return {
+    canViewInformation: Boolean(row.can_view_information),
+    canViewDecisions: Boolean(row.can_view_decisions),
+    canViewDocuments: Boolean(row.can_view_documents),
+  };
+}
+
+function getRequestedCaregiverPermissions(value: unknown): CaregiverSharePermissions {
+  const source =
+    typeof value === "object" && value !== null
+      ? (value as Record<string, unknown>)
+      : {};
+
+  return {
+    canViewInformation:
+      source.canViewInformation === undefined
+        ? true
+        : Boolean(source.canViewInformation),
+    canViewDecisions:
+      source.canViewDecisions === undefined
+        ? true
+        : Boolean(source.canViewDecisions),
+    canViewDocuments:
+      source.canViewDocuments === undefined
+        ? true
+        : Boolean(source.canViewDocuments),
+  };
+}
+
+function hasAnyCaregiverPermission(permissions: CaregiverSharePermissions) {
+  return (
+    permissions.canViewInformation ||
+    permissions.canViewDecisions ||
+    permissions.canViewDocuments
+  );
 }
 
 function getPatientDocumentStorageDirectory(userId: number) {
@@ -591,6 +668,7 @@ function buildPatientCaregiverLinkResponse(row: PatientCaregiverLinkRow) {
     caregiverEmail: row.caregiver_email,
     caregiverPhoneNumber: row.caregiver_phone_number ?? "",
     relationshipToPatient: row.relationship_to_patient,
+    permissions: buildCaregiverSharePermissions(row),
     status: row.status,
     createdAt: row.created_at,
     respondedAt: row.responded_at ?? "",
@@ -598,15 +676,19 @@ function buildPatientCaregiverLinkResponse(row: PatientCaregiverLinkRow) {
 }
 
 function buildCaregiverPatientLinkResponse(row: CaregiverPatientLinkRow) {
+  const permissions = buildCaregiverSharePermissions(row);
+
   return {
     id: row.id,
     patientId: row.patient_user_id,
     patientName: row.patient_name,
-    patientEmail: row.patient_email,
-    patientPhoneNumber: row.patient_phone_number ?? "",
-    patientNumber: row.patient_number ?? "",
-    dateOfBirth: row.date_of_birth ?? "",
+    patientEmail: permissions.canViewInformation ? row.patient_email : "",
+    patientPhoneNumber:
+      permissions.canViewInformation ? row.patient_phone_number ?? "" : "",
+    patientNumber: permissions.canViewInformation ? row.patient_number ?? "" : "",
+    dateOfBirth: permissions.canViewInformation ? row.date_of_birth ?? "" : "",
     relationshipToPatient: row.relationship_to_patient,
+    permissions,
     status: row.status,
     createdAt: row.created_at,
     respondedAt: row.responded_at ?? "",
@@ -808,6 +890,9 @@ async function getPatientCaregiverLinksByUserId(userId: number) {
         users.email AS caregiver_email,
         caregivers.phone_number AS caregiver_phone_number,
         patient_caregiver_links.relationship_to_patient,
+        patient_caregiver_links.can_view_information,
+        patient_caregiver_links.can_view_decisions,
+        patient_caregiver_links.can_view_documents,
         patient_caregiver_links.status,
         patient_caregiver_links.created_at::text AS created_at,
         patient_caregiver_links.responded_at::text AS responded_at
@@ -842,6 +927,9 @@ async function getCaregiverPatientLinksByUserId(userId: number) {
         patients.patient_number,
         patients.date_of_birth::text AS date_of_birth,
         patient_caregiver_links.relationship_to_patient,
+        patient_caregiver_links.can_view_information,
+        patient_caregiver_links.can_view_decisions,
+        patient_caregiver_links.can_view_documents,
         patient_caregiver_links.status,
         patient_caregiver_links.created_at::text AS created_at,
         patient_caregiver_links.responded_at::text AS responded_at
@@ -864,13 +952,16 @@ async function getCaregiverPatientLinksByUserId(userId: number) {
   return result.rows.map(buildCaregiverPatientLinkResponse);
 }
 
-async function hasActiveCaregiverLink(
+async function getActiveCaregiverLinkAccess(
   caregiverUserId: number,
   patientUserId: number
 ) {
-  const result = await pool.query<{ id: number }>(
+  const result = await pool.query<ActiveCaregiverLinkAccessRow>(
     `
-      SELECT id
+      SELECT
+        can_view_information,
+        can_view_decisions,
+        can_view_documents
       FROM patient_caregiver_links
       WHERE caregiver_user_id = $1
         AND patient_user_id = $2
@@ -879,7 +970,7 @@ async function hasActiveCaregiverLink(
     [caregiverUserId, patientUserId]
   );
 
-  return Boolean(result.rows[0]?.id);
+  return result.rows[0] ?? null;
 }
 
 app.get("/api/health", (req, res) => {
@@ -982,6 +1073,7 @@ app.post("/api/users/:id/caregiver-links", async (req, res) => {
   const relationshipToPatient = String(
     req.body.relationshipToPatient ?? ""
   ).trim();
+  const permissions = getRequestedCaregiverPermissions(req.body.permissions);
 
   const userResult = await pool.query<{ role: string }>(
     `
@@ -1017,6 +1109,10 @@ app.post("/api/users/:id/caregiver-links", async (req, res) => {
       error: "missing_required_fields",
       missingFields,
     });
+  }
+
+  if (!hasAnyCaregiverPermission(permissions)) {
+    return res.status(400).json({ error: "missing_permissions" });
   }
 
   if (!hasValidEmailFormat(caregiverEmail)) {
@@ -1072,6 +1168,9 @@ app.post("/api/users/:id/caregiver-links", async (req, res) => {
       `
         UPDATE patient_caregiver_links
         SET relationship_to_patient = $3,
+            can_view_information = $4,
+            can_view_decisions = $5,
+            can_view_documents = $6,
             status = 'pending',
             responded_at = NULL,
             updated_at = NOW()
@@ -1079,7 +1178,14 @@ app.post("/api/users/:id/caregiver-links", async (req, res) => {
           AND patient_user_id = $2
         RETURNING id
       `,
-      [existingLink.id, userId, relationshipToPatient]
+      [
+        existingLink.id,
+        userId,
+        relationshipToPatient,
+        permissions.canViewInformation,
+        permissions.canViewDecisions,
+        permissions.canViewDocuments,
+      ]
     );
 
     linkId = updateResult.rows[0]?.id;
@@ -1089,12 +1195,22 @@ app.post("/api/users/:id/caregiver-links", async (req, res) => {
         INSERT INTO patient_caregiver_links (
           patient_user_id,
           caregiver_user_id,
-          relationship_to_patient
+          relationship_to_patient,
+          can_view_information,
+          can_view_decisions,
+          can_view_documents
         )
-        VALUES ($1, $2, $3)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING id
       `,
-      [userId, caregiverId, relationshipToPatient]
+      [
+        userId,
+        caregiverId,
+        relationshipToPatient,
+        permissions.canViewInformation,
+        permissions.canViewDecisions,
+        permissions.canViewDocuments,
+      ]
     );
 
     linkId = insertResult.rows[0]?.id;
@@ -1165,6 +1281,80 @@ app.post("/api/users/:id/caregiver-links/:linkId/revoke", async (req, res) => {
   return res.json({ status: "revoked" });
 });
 
+app.put("/api/users/:id/caregiver-links/:linkId/permissions", async (req, res) => {
+  const userId = Number.parseInt(String(req.params.id ?? ""), 10);
+  const linkId = Number.parseInt(String(req.params.linkId ?? ""), 10);
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ error: "invalid_user_id" });
+  }
+
+  if (!Number.isInteger(linkId) || linkId <= 0) {
+    return res.status(400).json({ error: "invalid_link_id" });
+  }
+
+  const permissions = getRequestedCaregiverPermissions(req.body.permissions);
+
+  if (!hasAnyCaregiverPermission(permissions)) {
+    return res.status(400).json({ error: "missing_permissions" });
+  }
+
+  const userResult = await pool.query<{ role: string }>(
+    `
+      SELECT role
+      FROM users
+      WHERE id = $1
+    `,
+    [userId]
+  );
+
+  const role = userResult.rows[0]?.role;
+
+  if (!role) {
+    return res.status(404).json({ error: "user_not_found" });
+  }
+
+  if (role !== "patient") {
+    return res.status(400).json({ error: "invalid_role" });
+  }
+
+  const updateResult = await pool.query<{ id: number }>(
+    `
+      UPDATE patient_caregiver_links
+      SET can_view_information = $3,
+          can_view_decisions = $4,
+          can_view_documents = $5,
+          updated_at = NOW()
+      WHERE id = $1
+        AND patient_user_id = $2
+        AND status IN ('pending', 'active')
+      RETURNING id
+    `,
+    [
+      linkId,
+      userId,
+      permissions.canViewInformation,
+      permissions.canViewDecisions,
+      permissions.canViewDocuments,
+    ]
+  );
+
+  const updatedLinkId = updateResult.rows[0]?.id;
+
+  if (!updatedLinkId) {
+    return res.status(404).json({ error: "link_not_found" });
+  }
+
+  const links = await getPatientCaregiverLinksByUserId(userId);
+  const link = links.find((entry) => entry.id === updatedLinkId);
+
+  if (!link) {
+    return res.status(500).json({ error: "server_error" });
+  }
+
+  return res.json({ link });
+});
+
 app.get("/api/users/:id/patient-links", async (req, res) => {
   const userId = Number.parseInt(String(req.params.id ?? ""), 10);
 
@@ -1226,39 +1416,52 @@ app.get("/api/users/:id/patient-links/:patientId/overview", async (req, res) => 
     return res.status(400).json({ error: "invalid_role" });
   }
 
-  const hasAccess = await hasActiveCaregiverLink(userId, patientId);
+  const accessRow = await getActiveCaregiverLinkAccess(userId, patientId);
 
-  if (!hasAccess) {
+  if (!accessRow) {
     return res.status(403).json({ error: "access_denied" });
   }
 
+  const permissions = buildCaregiverSharePermissions(accessRow);
+
   const [account, dashboard, decisions, documents] = await Promise.all([
-    getAccountByUserId(patientId),
-    getPatientDashboardByUserId(patientId),
-    getPatientDecisionsByUserId(patientId),
-    getPatientDocumentsByUserId(patientId),
+    permissions.canViewInformation
+      ? getAccountByUserId(patientId)
+      : Promise.resolve(null),
+    permissions.canViewDecisions
+      ? getPatientDashboardByUserId(patientId)
+      : Promise.resolve(null),
+    permissions.canViewDecisions
+      ? getPatientDecisionsByUserId(patientId)
+      : Promise.resolve(null),
+    permissions.canViewDocuments
+      ? getPatientDocumentsByUserId(patientId)
+      : Promise.resolve([]),
   ]);
 
   if (
-    !account ||
-    account.user.role !== "patient" ||
-    !dashboard ||
-    !decisions
+    (permissions.canViewInformation &&
+      (!account || account.user.role !== "patient")) ||
+    (permissions.canViewDecisions && (!dashboard || !decisions))
   ) {
     return res.status(404).json({ error: "user_not_found" });
   }
 
   return res.json({
-    patient: {
-      id: account.user.id,
-      name: account.user.name,
-      email: account.user.email,
-      phoneNumber: account.profile.phoneNumber,
-      patientNumber: account.profile.patientNumber,
-      dateOfBirth: account.profile.dateOfBirth,
-    },
-    dashboard,
-    decisions,
+    permissions,
+    patient:
+      permissions.canViewInformation && account
+        ? {
+            id: account.user.id,
+            name: account.user.name,
+            email: account.user.email,
+            phoneNumber: account.profile.phoneNumber,
+            patientNumber: account.profile.patientNumber,
+            dateOfBirth: account.profile.dateOfBirth,
+          }
+        : null,
+    dashboard: permissions.canViewDecisions ? dashboard : null,
+    decisions: permissions.canViewDecisions ? decisions : null,
     documents,
   });
 });
@@ -1393,12 +1596,12 @@ app.get("/api/users/:id/documents/:documentId/file", async (req, res) => {
       return res.status(403).json({ error: "access_denied" });
     }
   } else if (role === "caregiver") {
-    const hasAccess = await hasActiveCaregiverLink(
+    const accessRow = await getActiveCaregiverLinkAccess(
       userId,
       storedDocument.patient_user_id
     );
 
-    if (!hasAccess) {
+    if (!accessRow || !accessRow.can_view_documents) {
       return res.status(403).json({ error: "access_denied" });
     }
   } else {
