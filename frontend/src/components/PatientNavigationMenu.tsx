@@ -1,13 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import "./patientNavigationMenu.css";
 
-type PatientScreen = "home" | "decisions" | "caregiver" | "documents" | "account";
+type PatientScreen =
+  | "home"
+  | "decisions"
+  | "caregiver"
+  | "doctor"
+  | "documents"
+  | "account";
 
 type PatientNavigationMenuProps = {
   currentScreen: PatientScreen;
   onOpenHome: () => void;
   onOpenDecisions: () => void;
   onOpenCaregiver: () => void;
+  onOpenDoctor: () => void;
   onOpenDocuments: () => void;
   onOpenAccount: () => void;
   onLogout: () => void;
@@ -18,6 +25,7 @@ export default function PatientNavigationMenu({
   onOpenHome,
   onOpenDecisions,
   onOpenCaregiver,
+  onOpenDoctor,
   onOpenDocuments,
   onOpenAccount,
   onLogout,
@@ -55,6 +63,7 @@ export default function PatientNavigationMenu({
     { key: "home", label: "Início", onSelect: onOpenHome },
     { key: "decisions", label: "Decisões", onSelect: onOpenDecisions },
     { key: "caregiver", label: "Cuidador", onSelect: onOpenCaregiver },
+    { key: "doctor", label: "Médico", onSelect: onOpenDoctor },
     { key: "documents", label: "Documentos", onSelect: onOpenDocuments },
     { key: "account", label: "Conta", onSelect: onOpenAccount },
   ] as const;

@@ -756,13 +756,9 @@
   padding: 0;
 }
 
-.home-caregiver-sheet-active .home-caregiver-sheet-title {
-  transform: translateY(8px);
-}
-
 .home-caregiver-sheet-head {
   display: flex;
-  align-items: flex-start;
+  align-items: baseline;
   justify-content: space-between;
   gap: 12px;
 }
