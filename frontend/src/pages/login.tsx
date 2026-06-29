@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import "./login.css";
 
 const LAST_LOGIN_EMAIL_KEY = "myvontade-last-login-email";
@@ -115,6 +115,11 @@ export default function Login({
   const shouldShowEmailHistory =
     isEmailHistoryVisible && filteredSavedEmails.length > 0;
 
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void handleLogin();
+  };
+
   return (
     <div className="login-page">
       <section className="info-panel">
@@ -143,7 +148,7 @@ export default function Login({
         <div className="form-card">
           <h2 className="form-title">Entrar</h2>
 
-          <div className="form-fields">
+          <form className="form-fields" onSubmit={handleSubmit}>
             <label className="form-field">
               <span>Email</span>
               <div className="email-field-group">
@@ -194,10 +199,10 @@ export default function Login({
               />
             </label>
 
-            <button className="form-button" type="button" onClick={handleLogin}>
+            <button className="form-button" type="submit">
               Entrar
             </button>
-          </div>
+          </form>
 
           {message && (
             <p className="form-message" role="status">
