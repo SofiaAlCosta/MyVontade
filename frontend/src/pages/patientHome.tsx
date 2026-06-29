@@ -4,9 +4,12 @@ import type {
   DashboardDecisionSummary,
   PatientCaregiverLink,
   PatientDashboard,
+  PatientDoctorLink,
   PatientDocument,
   User,
 } from "../types/user";
+import { formatDateTime } from "../utils/date";
+import { sortLinksByStatus } from "../utils/permissions";
 import { getFirstName } from "../utils/profile";
 import "./patientHome.css";
 
@@ -31,23 +34,6 @@ const fallbackDecisionsSummary: DashboardDecisionSummary[] = [
   },
 ];
 
-function formatDateTime(value: string) {
-  if (!value) {
-    return "Agora mesmo";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "Data indisponível";
-  }
-
-  return new Intl.DateTimeFormat("pt-PT", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-}
-
 function getPendingCaregiverText(count: number) {
   if (count <= 0) {
     return "";
@@ -56,6 +42,16 @@ function getPendingCaregiverText(count: number) {
   return count === 1
     ? "Existe 1 convite de cuidador pendente."
     : `Existem ${count} convites de cuidador pendentes.`;
+}
+
+function getPendingDoctorText(count: number) {
+  if (count <= 0) {
+    return "";
+  }
+
+  return count === 1
+    ? "Existe 1 convite de médico pendente."
+    : `Existem ${count} convites de médico pendentes.`;
 }
 
 export default function PatientHome({
@@ -76,12 +72,14 @@ export default function PatientHome({
   const [caregiverLinks, setCaregiverLinks] = useState<PatientCaregiverLink[]>(
     []
   );
+  const [doctorLinks, setDoctorLinks] = useState<PatientDoctorLink[]>([]);
 
   useEffect(() => {
     if (user.role !== "patient") {
       setDecisionsSummary(fallbackDecisionsSummary);
       setDocuments([]);
       setCaregiverLinks([]);
+      setDoctorLinks([]);
       return;
     }
 
@@ -128,11 +126,35 @@ export default function PatientHome({
         }
 
         if (!ignore) {
-          setCaregiverLinks(data.links);
+          setCaregiverLinks(sortLinksByStatus(data.links));
         }
       } catch {
         if (!ignore) {
           setCaregiverLinks([]);
+        }
+      }
+    };
+
+    const loadDoctorLinks = async () => {
+      try {
+        const response = await fetch(`${apiUrl}/api/users/${user.id}/doctor-links`);
+        const data = (await response.json()) as {
+          links?: PatientDoctorLink[];
+        };
+
+        if (!response.ok || !Array.isArray(data.links)) {
+          if (!ignore) {
+            setDoctorLinks([]);
+          }
+          return;
+        }
+
+        if (!ignore) {
+          setDoctorLinks(sortLinksByStatus(data.links));
+        }
+      } catch {
+        if (!ignore) {
+          setDoctorLinks([]);
         }
       }
     };
@@ -161,7 +183,12 @@ export default function PatientHome({
       }
     };
 
-    void Promise.all([loadDashboard(), loadCaregiverLinks(), loadDocuments()]);
+    void Promise.all([
+      loadDashboard(),
+      loadCaregiverLinks(),
+      loadDoctorLinks(),
+      loadDocuments(),
+    ]);
 
     return () => {
       ignore = true;
@@ -174,8 +201,12 @@ export default function PatientHome({
   const pendingCaregiverLinks = caregiverLinks.filter(
     (link) => link.status === "pending"
   );
+  const activeDoctorLinks = doctorLinks.filter((link) => link.status === "active");
+  const pendingDoctorLinks = doctorLinks.filter((link) => link.status === "pending");
   const primaryCaregiver = activeCaregiverLinks[0] ?? null;
+  const primaryDoctor = activeDoctorLinks[0] ?? null;
   const extraActiveCaregiverCount = Math.max(0, activeCaregiverLinks.length - 1);
+  const extraActiveDoctorCount = Math.max(0, activeDoctorLinks.length - 1);
   const completedDecisionCount = decisionsSummary.filter(
     (decision) => decision.value.trim() !== "Por definir"
   ).length;
@@ -207,12 +238,17 @@ export default function PatientHome({
     activeCaregiverLinks[0]?.respondedAt ||
     pendingCaregiverLinks[0]?.createdAt ||
     "";
-  const connectedDoctorCount = 0;
+  const latestDoctorActivity =
+    activeDoctorLinks[0]?.respondedAt || pendingDoctorLinks[0]?.createdAt || "";
+  const latestConnectionActivity = [latestCaregiverActivity, latestDoctorActivity]
+    .filter(Boolean)
+    .sort((left, right) => right.localeCompare(left))[0];
+  const connectedDoctorCount = activeDoctorLinks.length;
   const latestDocumentText = latestDocument
     ? formatDateTime(latestDocument.uploadedAt)
     : "Sem registo";
-  const latestCaregiverActivityText = latestCaregiverActivity
-    ? formatDateTime(latestCaregiverActivity)
+  const latestConnectionActivityText = latestConnectionActivity
+    ? formatDateTime(latestConnectionActivity)
     : "Sem registo";
 
   return (
@@ -352,7 +388,7 @@ export default function PatientHome({
                 <div className="home-overview-item">
                   <p className="home-overview-label">Última ligação</p>
                   <strong className="home-overview-value">
-                    {latestCaregiverActivityText}
+                    {latestConnectionActivityText}
                   </strong>
                 </div>
               </div>
@@ -404,7 +440,9 @@ export default function PatientHome({
                         Ligação ativa desde
                       </dt>
                       <dd className="home-caregiver-sheet-value">
-                        {formatDateTime(primaryCaregiver.respondedAt)}
+                        {primaryCaregiver.respondedAt
+                          ? formatDateTime(primaryCaregiver.respondedAt)
+                          : "Agora mesmo"}
                       </dd>
                     </div>
 
@@ -472,37 +510,108 @@ export default function PatientHome({
                 <h2>Médico</h2>
               </div>
 
-              <div className="home-caregiver-sheet">
-                <div className="home-caregiver-sheet-head">
-                  <h3 className="home-caregiver-sheet-title">
-                    Sem médico associado
-                  </h3>
-                  <span className="home-connection-pill home-connection-pill-warning">
-                    Sem ligação
-                  </span>
-                </div>
+              {primaryDoctor ? (
+                <div className="home-caregiver-sheet home-caregiver-sheet-active">
+                  <div className="home-caregiver-sheet-head">
+                    <h3 className="home-caregiver-sheet-title">
+                      {primaryDoctor.doctorName}
+                    </h3>
+                    <span className="home-connection-pill">Ativo</span>
+                  </div>
 
-                <dl className="home-caregiver-sheet-list">
-                  <div className="home-caregiver-sheet-row">
-                    <dt className="home-caregiver-sheet-label">Estado</dt>
-                    <dd className="home-caregiver-sheet-value">
-                      Sem médico ligado
-                    </dd>
+                  <dl className="home-caregiver-sheet-list">
+                    <div className="home-caregiver-sheet-row">
+                      <dt className="home-caregiver-sheet-label">Contacto</dt>
+                      <dd className="home-caregiver-sheet-value">
+                        <div className="home-caregiver-sheet-value-stack">
+                          <span>{primaryDoctor.doctorEmail || "Email por definir"}</span>
+                          <span>
+                            {primaryDoctor.doctorPhoneNumber || "Telefone por definir"}
+                          </span>
+                        </div>
+                      </dd>
+                    </div>
+
+                    <div className="home-caregiver-sheet-row">
+                      <dt className="home-caregiver-sheet-label">Especialidade</dt>
+                      <dd className="home-caregiver-sheet-value">
+                        {primaryDoctor.specialty || "Por definir"}
+                      </dd>
+                    </div>
+
+                    <div className="home-caregiver-sheet-row">
+                      <dt className="home-caregiver-sheet-label">Cédula</dt>
+                      <dd className="home-caregiver-sheet-value">
+                        {primaryDoctor.professionalLicense || "Por definir"}
+                      </dd>
+                    </div>
+
+                    <div className="home-caregiver-sheet-row">
+                      <dt className="home-caregiver-sheet-label">
+                        Ligação ativa desde
+                      </dt>
+                      <dd className="home-caregiver-sheet-value">
+                        {primaryDoctor.respondedAt
+                          ? formatDateTime(primaryDoctor.respondedAt)
+                          : "Agora mesmo"}
+                      </dd>
+                    </div>
+
+                    {(extraActiveDoctorCount > 0 || pendingDoctorLinks.length > 0) && (
+                      <div className="home-caregiver-sheet-row">
+                        <dt className="home-caregiver-sheet-label">
+                          Mais informação
+                        </dt>
+                        <dd className="home-caregiver-sheet-value">
+                          {extraActiveDoctorCount > 0
+                            ? extraActiveDoctorCount === 1
+                              ? "Existe mais 1 médico ativo."
+                              : `Existem mais ${extraActiveDoctorCount} médicos ativos.`
+                            : getPendingDoctorText(pendingDoctorLinks.length)}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                </div>
+              ) : (
+                <div className="home-caregiver-sheet">
+                  <div className="home-caregiver-sheet-head">
+                    <h3 className="home-caregiver-sheet-title">
+                      Sem médico associado
+                    </h3>
+                    <span className="home-connection-pill home-connection-pill-warning">
+                      {pendingDoctorLinks.length > 0 ? "Pendente" : "Sem ligação"}
+                    </span>
                   </div>
-                  <div className="home-caregiver-sheet-row">
-                    <dt className="home-caregiver-sheet-label">Quando aparecer</dt>
-                    <dd className="home-caregiver-sheet-value">
-                      Quando houver uma ligação ativa
-                    </dd>
-                  </div>
-                  <div className="home-caregiver-sheet-row">
-                    <dt className="home-caregiver-sheet-label">Informação</dt>
-                    <dd className="home-caregiver-sheet-value">
-                      Os dados do médico vão aparecer aqui
-                    </dd>
-                  </div>
-                </dl>
-              </div>
+
+                  <dl className="home-caregiver-sheet-list">
+                    <div className="home-caregiver-sheet-row">
+                      <dt className="home-caregiver-sheet-label">Estado</dt>
+                      <dd className="home-caregiver-sheet-value">
+                        {pendingDoctorLinks.length > 0
+                          ? "Convite pendente"
+                          : "Sem médico ligado"}
+                      </dd>
+                    </div>
+                    <div className="home-caregiver-sheet-row">
+                      <dt className="home-caregiver-sheet-label">Próximo passo</dt>
+                      <dd className="home-caregiver-sheet-value">
+                        {pendingDoctorLinks.length > 0
+                          ? getPendingDoctorText(pendingDoctorLinks.length)
+                          : "Abrir a área do médico"}
+                      </dd>
+                    </div>
+                    <div className="home-caregiver-sheet-row">
+                      <dt className="home-caregiver-sheet-label">Informação</dt>
+                      <dd className="home-caregiver-sheet-value">
+                        {pendingDoctorLinks.length > 0
+                          ? "O convite foi enviado e está à espera de aceitação."
+                          : "Os dados do médico vão aparecer aqui"}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+              )}
             </section>
           </div>
         </div>

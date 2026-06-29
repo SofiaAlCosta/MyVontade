@@ -1,11 +1,22 @@
 import { useEffect, useState } from "react";
 import PatientNavigationMenu from "../components/PatientNavigationMenu";
+import PermissionFields from "../components/PermissionFields";
 import type {
   CaregiverSharePermissions,
   PatientCaregiverLink,
   User,
 } from "../types/user";
-import { getCaregiverPermissionLabels } from "../utils/caregiver";
+import { formatDateTime } from "../utils/date";
+import {
+  getPatientCaregiverMessage,
+  getCaregiverPermissionLabels,
+} from "../utils/caregiver";
+import {
+  getLinkStatusLabel,
+  hasAnyPermission,
+  hasSamePermissions,
+  sortLinksByStatus,
+} from "../utils/permissions";
 import { hasValidEmailFormat } from "../utils/profile";
 import "./patientModule.css";
 
@@ -31,83 +42,17 @@ type InvitationField = keyof InvitationFormData;
 type InvitationErrors = Partial<Record<InvitationField, string>>;
 type MessageTone = "success" | "error";
 
+const initialPermissions: CaregiverSharePermissions = {
+  canViewInformation: true,
+  canViewDecisions: true,
+  canViewDocuments: true,
+};
+
 const initialFormData: InvitationFormData = {
   caregiverEmail: "",
   relationshipToPatient: "",
-  permissions: {
-    canViewInformation: true,
-    canViewDecisions: true,
-    canViewDocuments: true,
-  },
+  permissions: initialPermissions,
 };
-
-function getCaregiverLinksMessage(error: string | undefined) {
-  if (error === "missing_required_fields") {
-    return "Preenche o email do cuidador e a relação antes de enviar o convite.";
-  }
-
-  if (error === "invalid_field_format") {
-    return "Revê o email indicado antes de continuar.";
-  }
-
-  if (error === "caregiver_not_found") {
-    return "Não encontrámos um cuidador com esse email. O cuidador precisa de ter conta criada.";
-  }
-
-  if (error === "caregiver_already_connected") {
-    return "Esse cuidador já está ligado ao teu perfil.";
-  }
-
-  if (error === "invalid_role") {
-    return "Esta área está disponível apenas para pacientes.";
-  }
-
-  if (error === "link_not_found") {
-    return "Não foi possível encontrar essa ligação.";
-  }
-
-  if (error === "user_not_found") {
-    return "Não foi possível encontrar este utilizador.";
-  }
-
-  if (error === "missing_permissions") {
-    return "Escolhe pelo menos uma área para partilhar com o cuidador.";
-  }
-
-  return "Ocorreu um erro. Tenta novamente.";
-}
-
-function formatDateTime(value: string) {
-  if (!value) {
-    return "Agora mesmo";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "Data indisponível";
-  }
-
-  return new Intl.DateTimeFormat("pt-PT", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-}
-
-function getStatusLabel(status: PatientCaregiverLink["status"]) {
-  return status === "active" ? "Ligado" : "Pendente";
-}
-
-function hasSamePermissions(
-  left: CaregiverSharePermissions,
-  right: CaregiverSharePermissions
-) {
-  return (
-    left.canViewInformation === right.canViewInformation &&
-    left.canViewDecisions === right.canViewDecisions &&
-    left.canViewDocuments === right.canViewDocuments
-  );
-}
 
 export default function PatientCaregiverPage({
   apiUrl,
@@ -131,7 +76,7 @@ export default function PatientCaregiverPage({
   const [actionLinkId, setActionLinkId] = useState<number | null>(null);
   const [editingLinkId, setEditingLinkId] = useState<number | null>(null);
   const [editingPermissions, setEditingPermissions] =
-    useState<CaregiverSharePermissions>(initialFormData.permissions);
+    useState<CaregiverSharePermissions>(initialPermissions);
 
   useEffect(() => {
     let ignore = false;
@@ -149,14 +94,14 @@ export default function PatientCaregiverPage({
 
         if (!response.ok || !Array.isArray(data.links)) {
           if (!ignore) {
-            setMessage(getCaregiverLinksMessage(data.error));
+            setMessage(getPatientCaregiverMessage(data.error));
             setMessageTone("error");
           }
           return;
         }
 
         if (!ignore) {
-          setLinks(data.links);
+          setLinks(sortLinksByStatus(data.links));
         }
       } catch {
         if (!ignore) {
@@ -237,11 +182,7 @@ export default function PatientCaregiverPage({
       nextErrors.relationshipToPatient = "Obrigatório";
     }
 
-    if (
-      !formData.permissions.canViewInformation &&
-      !formData.permissions.canViewDecisions &&
-      !formData.permissions.canViewDocuments
-    ) {
+    if (!hasAnyPermission(formData.permissions)) {
       nextErrors.permissions = "Escolhe pelo menos uma opção";
     }
 
@@ -277,7 +218,7 @@ export default function PatientCaregiverPage({
       };
 
       if (!response.ok || !data.link) {
-        setMessage(getCaregiverLinksMessage(data.error));
+        setMessage(getPatientCaregiverMessage(data.error));
         setMessageTone("error");
         return;
       }
@@ -286,13 +227,7 @@ export default function PatientCaregiverPage({
 
       setLinks((currentLinks) => {
         const nextLinks = currentLinks.filter((link) => link.id !== nextLink.id);
-        return [nextLink, ...nextLinks].sort((left, right) => {
-          if (left.status !== right.status) {
-            return left.status === "active" ? -1 : 1;
-          }
-
-          return right.createdAt.localeCompare(left.createdAt);
-        });
+        return sortLinksByStatus([nextLink, ...nextLinks]);
       });
       setFormData(initialFormData);
       setErrors({});
@@ -324,15 +259,15 @@ export default function PatientCaregiverPage({
       };
 
       if (!response.ok) {
-        setMessage(getCaregiverLinksMessage(data.error));
+        setMessage(getPatientCaregiverMessage(data.error));
         setMessageTone("error");
         return;
       }
 
-      setLinks((currentLinks) => currentLinks.filter((link) => link.id !== linkId));
+        setLinks((currentLinks) => currentLinks.filter((link) => link.id !== linkId));
       if (editingLinkId === linkId) {
         setEditingLinkId(null);
-        setEditingPermissions(initialFormData.permissions);
+        setEditingPermissions(initialPermissions);
       }
       setMessage("Ligação removida com sucesso.");
       setMessageTone("success");
@@ -352,7 +287,7 @@ export default function PatientCaregiverPage({
 
   const handleCancelEditingPermissions = () => {
     setEditingLinkId(null);
-    setEditingPermissions(initialFormData.permissions);
+    setEditingPermissions(initialPermissions);
   };
 
   const handleToggleEditingPermission = (
@@ -372,12 +307,8 @@ export default function PatientCaregiverPage({
       return;
     }
 
-    if (
-      !editingPermissions.canViewInformation &&
-      !editingPermissions.canViewDecisions &&
-      !editingPermissions.canViewDocuments
-    ) {
-      setMessage("Escolhe pelo menos uma área para partilhar com o cuidador.");
+    if (!hasAnyPermission(editingPermissions)) {
+      setMessage(getPatientCaregiverMessage("missing_permissions"));
       setMessageTone("error");
       return;
     }
@@ -405,7 +336,7 @@ export default function PatientCaregiverPage({
       };
 
       if (!response.ok || !data.link) {
-        setMessage(getCaregiverLinksMessage(data.error));
+        setMessage(getPatientCaregiverMessage(data.error));
         setMessageTone("error");
         return;
       }
@@ -414,7 +345,7 @@ export default function PatientCaregiverPage({
         currentLinks.map((link) => (link.id === data.link?.id ? data.link : link))
       );
       setEditingLinkId(null);
-      setEditingPermissions(initialFormData.permissions);
+      setEditingPermissions(initialPermissions);
       setMessage("Permissões atualizadas com sucesso.");
       setMessageTone("success");
     } catch {
@@ -572,63 +503,10 @@ export default function PatientCaregiverPage({
                         )}
                       </div>
 
-                      <div className="module-check-list">
-                        <label className="module-check-option">
-                          <input
-                            type="checkbox"
-                            checked={formData.permissions.canViewInformation}
-                            onChange={(event) =>
-                              togglePermission(
-                                "canViewInformation",
-                                event.target.checked
-                              )
-                            }
-                          />
-                          <div>
-                            <strong>Informação</strong>
-                            <span>
-                              Email, telefone, número de utente e data de
-                              nascimento.
-                            </span>
-                          </div>
-                        </label>
-
-                        <label className="module-check-option">
-                          <input
-                            type="checkbox"
-                            checked={formData.permissions.canViewDecisions}
-                            onChange={(event) =>
-                              togglePermission(
-                                "canViewDecisions",
-                                event.target.checked
-                              )
-                            }
-                          />
-                          <div>
-                            <strong>Decisões</strong>
-                            <span>Diretivas principais e notas registadas.</span>
-                          </div>
-                        </label>
-
-                        <label className="module-check-option">
-                          <input
-                            type="checkbox"
-                            checked={formData.permissions.canViewDocuments}
-                            onChange={(event) =>
-                              togglePermission(
-                                "canViewDocuments",
-                                event.target.checked
-                              )
-                            }
-                          />
-                          <div>
-                            <strong>Documentos</strong>
-                            <span>
-                              Ficheiros carregados e respetivo descarregamento.
-                            </span>
-                          </div>
-                        </label>
-                      </div>
+                      <PermissionFields
+                        permissions={formData.permissions}
+                        onToggle={togglePermission}
+                      />
                     </div>
 
                     <p className="module-note">
@@ -671,7 +549,7 @@ export default function PatientCaregiverPage({
                         <div className="module-item-top">
                           <p className="module-item-title">{link.caregiverName}</p>
                           <span className="module-pill module-pill-warning">
-                            {getStatusLabel(link.status)}
+                            {getLinkStatusLabel(link.status)}
                           </span>
                         </div>
                         <p className="module-item-text">{link.caregiverEmail}</p>
@@ -692,58 +570,11 @@ export default function PatientCaregiverPage({
                               Alterar permissões
                             </p>
 
-                            <div className="module-check-list module-check-list-compact">
-                              <label className="module-check-option module-check-option-compact">
-                                <input
-                                  type="checkbox"
-                                  checked={editingPermissions.canViewInformation}
-                                  onChange={(event) =>
-                                    handleToggleEditingPermission(
-                                      "canViewInformation",
-                                      event.target.checked
-                                    )
-                                  }
-                                />
-                                <div>
-                                  <strong>Informação</strong>
-                                  <span>Dados pessoais do paciente.</span>
-                                </div>
-                              </label>
-
-                              <label className="module-check-option module-check-option-compact">
-                                <input
-                                  type="checkbox"
-                                  checked={editingPermissions.canViewDecisions}
-                                  onChange={(event) =>
-                                    handleToggleEditingPermission(
-                                      "canViewDecisions",
-                                      event.target.checked
-                                    )
-                                  }
-                                />
-                                <div>
-                                  <strong>Decisões</strong>
-                                  <span>Diretivas e notas registadas.</span>
-                                </div>
-                              </label>
-
-                              <label className="module-check-option module-check-option-compact">
-                                <input
-                                  type="checkbox"
-                                  checked={editingPermissions.canViewDocuments}
-                                  onChange={(event) =>
-                                    handleToggleEditingPermission(
-                                      "canViewDocuments",
-                                      event.target.checked
-                                    )
-                                  }
-                                />
-                                <div>
-                                  <strong>Documentos</strong>
-                                  <span>Ficheiros carregados.</span>
-                                </div>
-                              </label>
-                            </div>
+                            <PermissionFields
+                              permissions={editingPermissions}
+                              onToggle={handleToggleEditingPermission}
+                              variant="inline"
+                            />
                           </div>
                         )}
 
@@ -817,18 +648,6 @@ export default function PatientCaregiverPage({
 
             {!isLoading && activeLinks.length > 0 && (
               <section className="module-collection-panel">
-                <div className="module-collection-header">
-                  <div className="module-section-heading-group">
-                    <h3 className="module-subtitle">Cuidadores ligados</h3>
-                    <span className="module-section-count-circle">
-                      {activeLinks.length}
-                    </span>
-                  </div>
-                  <p className="module-inline-note">
-                    Estes acessos já foram aceites.
-                  </p>
-                </div>
-
                 <div className="module-item-list module-item-list-tight">
                   {activeLinks.map((link) => {
                     const permissionLabels = getCaregiverPermissionLabels(
@@ -843,7 +662,7 @@ export default function PatientCaregiverPage({
                         <div className="module-item-top">
                           <p className="module-item-title">{link.caregiverName}</p>
                           <span className="module-pill">
-                            {getStatusLabel(link.status)}
+                            {getLinkStatusLabel(link.status)}
                           </span>
                         </div>
                         <p className="module-item-text">{link.caregiverEmail}</p>
@@ -864,58 +683,11 @@ export default function PatientCaregiverPage({
                               Alterar permissões
                             </p>
 
-                            <div className="module-check-list module-check-list-compact">
-                              <label className="module-check-option module-check-option-compact">
-                                <input
-                                  type="checkbox"
-                                  checked={editingPermissions.canViewInformation}
-                                  onChange={(event) =>
-                                    handleToggleEditingPermission(
-                                      "canViewInformation",
-                                      event.target.checked
-                                    )
-                                  }
-                                />
-                                <div>
-                                  <strong>Informação</strong>
-                                  <span>Dados pessoais do paciente.</span>
-                                </div>
-                              </label>
-
-                              <label className="module-check-option module-check-option-compact">
-                                <input
-                                  type="checkbox"
-                                  checked={editingPermissions.canViewDecisions}
-                                  onChange={(event) =>
-                                    handleToggleEditingPermission(
-                                      "canViewDecisions",
-                                      event.target.checked
-                                    )
-                                  }
-                                />
-                                <div>
-                                  <strong>Decisões</strong>
-                                  <span>Diretivas e notas registadas.</span>
-                                </div>
-                              </label>
-
-                              <label className="module-check-option module-check-option-compact">
-                                <input
-                                  type="checkbox"
-                                  checked={editingPermissions.canViewDocuments}
-                                  onChange={(event) =>
-                                    handleToggleEditingPermission(
-                                      "canViewDocuments",
-                                      event.target.checked
-                                    )
-                                  }
-                                />
-                                <div>
-                                  <strong>Documentos</strong>
-                                  <span>Ficheiros carregados.</span>
-                                </div>
-                              </label>
-                            </div>
+                            <PermissionFields
+                              permissions={editingPermissions}
+                              onToggle={handleToggleEditingPermission}
+                              variant="inline"
+                            />
                           </div>
                         )}
 

@@ -1,11 +1,22 @@
 import { useEffect, useState } from "react";
 import PatientNavigationMenu from "../components/PatientNavigationMenu";
+import PermissionFields from "../components/PermissionFields";
 import type {
   CaregiverSharePermissions,
   PatientDoctorLink,
   User,
 } from "../types/user";
-import { getDoctorPermissionLabels } from "../utils/doctor";
+import { formatDateTime } from "../utils/date";
+import {
+  getPatientDoctorMessage,
+  getDoctorPermissionLabels,
+} from "../utils/doctor";
+import {
+  getLinkStatusLabel,
+  hasAnyPermission,
+  hasSamePermissions,
+  sortLinksByStatus,
+} from "../utils/permissions";
 import { hasValidEmailFormat } from "../utils/profile";
 import "./patientModule.css";
 
@@ -40,91 +51,6 @@ const initialFormData: InvitationFormData = {
   doctorEmail: "",
   permissions: initialPermissions,
 };
-
-function getDoctorLinksMessage(error: string | undefined) {
-  if (error === "missing_required_fields") {
-    return "Preenche o email do médico antes de enviar o convite.";
-  }
-
-  if (error === "invalid_field_format") {
-    return "Revê o email indicado antes de continuar.";
-  }
-
-  if (error === "doctor_not_found") {
-    return "Não encontrámos um médico com esse email. O médico precisa de ter conta criada.";
-  }
-
-  if (error === "doctor_already_connected") {
-    return "Esse médico já está ligado ao teu perfil.";
-  }
-
-  if (error === "invalid_role") {
-    return "Esta área está disponível apenas para pacientes.";
-  }
-
-  if (error === "link_not_found") {
-    return "Não foi possível encontrar essa ligação.";
-  }
-
-  if (error === "user_not_found") {
-    return "Não foi possível encontrar este utilizador.";
-  }
-
-  if (error === "missing_permissions") {
-    return "Escolhe pelo menos uma área para partilhar com o médico.";
-  }
-
-  return "Ocorreu um erro. Tenta novamente.";
-}
-
-function formatDateTime(value: string) {
-  if (!value) {
-    return "Agora mesmo";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "Data indisponível";
-  }
-
-  return new Intl.DateTimeFormat("pt-PT", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-}
-
-function getStatusLabel(status: PatientDoctorLink["status"]) {
-  return status === "active" ? "Ligado" : "Pendente";
-}
-
-function hasSamePermissions(
-  left: CaregiverSharePermissions,
-  right: CaregiverSharePermissions
-) {
-  return (
-    left.canViewInformation === right.canViewInformation &&
-    left.canViewDecisions === right.canViewDecisions &&
-    left.canViewDocuments === right.canViewDocuments
-  );
-}
-
-function sortPatientDoctorLinks(links: PatientDoctorLink[]) {
-  return [...links].sort((left, right) => {
-    if (left.status !== right.status) {
-      return left.status === "active" ? -1 : 1;
-    }
-
-    const leftDate =
-      left.status === "active" ? left.respondedAt || left.createdAt : left.createdAt;
-    const rightDate =
-      right.status === "active"
-        ? right.respondedAt || right.createdAt
-        : right.createdAt;
-
-    return rightDate.localeCompare(leftDate);
-  });
-}
 
 export default function PatientDoctorPage({
   apiUrl,
@@ -166,14 +92,14 @@ export default function PatientDoctorPage({
 
         if (!response.ok || !Array.isArray(data.links)) {
           if (!ignore) {
-            setMessage(getDoctorLinksMessage(data.error));
+            setMessage(getPatientDoctorMessage(data.error));
             setMessageTone("error");
           }
           return;
         }
 
         if (!ignore) {
-          setLinks(sortPatientDoctorLinks(data.links));
+          setLinks(sortLinksByStatus(data.links));
         }
       } catch {
         if (!ignore) {
@@ -250,11 +176,7 @@ export default function PatientDoctorPage({
       nextErrors.doctorEmail = "Email inválido";
     }
 
-    if (
-      !formData.permissions.canViewInformation &&
-      !formData.permissions.canViewDecisions &&
-      !formData.permissions.canViewDocuments
-    ) {
+    if (!hasAnyPermission(formData.permissions)) {
       nextErrors.permissions = "Escolhe pelo menos uma opção";
     }
 
@@ -290,7 +212,7 @@ export default function PatientDoctorPage({
       };
 
       if (!response.ok || !data.link) {
-        setMessage(getDoctorLinksMessage(data.error));
+        setMessage(getPatientDoctorMessage(data.error));
         setMessageTone("error");
         return;
       }
@@ -299,7 +221,7 @@ export default function PatientDoctorPage({
 
       setLinks((currentLinks) => {
         const nextLinks = currentLinks.filter((link) => link.id !== nextLink.id);
-        return sortPatientDoctorLinks([nextLink, ...nextLinks]);
+        return sortLinksByStatus([nextLink, ...nextLinks]);
       });
       setFormData(initialFormData);
       setErrors({});
@@ -331,7 +253,7 @@ export default function PatientDoctorPage({
       };
 
       if (!response.ok) {
-        setMessage(getDoctorLinksMessage(data.error));
+        setMessage(getPatientDoctorMessage(data.error));
         setMessageTone("error");
         return;
       }
@@ -379,12 +301,8 @@ export default function PatientDoctorPage({
       return;
     }
 
-    if (
-      !editingPermissions.canViewInformation &&
-      !editingPermissions.canViewDecisions &&
-      !editingPermissions.canViewDocuments
-    ) {
-      setMessage("Escolhe pelo menos uma área para partilhar com o médico.");
+    if (!hasAnyPermission(editingPermissions)) {
+      setMessage(getPatientDoctorMessage("missing_permissions"));
       setMessageTone("error");
       return;
     }
@@ -412,7 +330,7 @@ export default function PatientDoctorPage({
       };
 
       if (!response.ok || !data.link) {
-        setMessage(getDoctorLinksMessage(data.error));
+        setMessage(getPatientDoctorMessage(data.error));
         setMessageTone("error");
         return;
       }
@@ -557,63 +475,10 @@ export default function PatientDoctorPage({
                         )}
                       </div>
 
-                      <div className="module-check-list">
-                        <label className="module-check-option">
-                          <input
-                            type="checkbox"
-                            checked={formData.permissions.canViewInformation}
-                            onChange={(event) =>
-                              togglePermission(
-                                "canViewInformation",
-                                event.target.checked
-                              )
-                            }
-                          />
-                          <div>
-                            <strong>Informação</strong>
-                            <span>
-                              Email, telefone, número de utente e data de
-                              nascimento.
-                            </span>
-                          </div>
-                        </label>
-
-                        <label className="module-check-option">
-                          <input
-                            type="checkbox"
-                            checked={formData.permissions.canViewDecisions}
-                            onChange={(event) =>
-                              togglePermission(
-                                "canViewDecisions",
-                                event.target.checked
-                              )
-                            }
-                          />
-                          <div>
-                            <strong>Decisões</strong>
-                            <span>Diretivas principais e notas registadas.</span>
-                          </div>
-                        </label>
-
-                        <label className="module-check-option">
-                          <input
-                            type="checkbox"
-                            checked={formData.permissions.canViewDocuments}
-                            onChange={(event) =>
-                              togglePermission(
-                                "canViewDocuments",
-                                event.target.checked
-                              )
-                            }
-                          />
-                          <div>
-                            <strong>Documentos</strong>
-                            <span>
-                              Ficheiros carregados e respetivo descarregamento.
-                            </span>
-                          </div>
-                        </label>
-                      </div>
+                      <PermissionFields
+                        permissions={formData.permissions}
+                        onToggle={togglePermission}
+                      />
                     </div>
 
                     <p className="module-note">
@@ -656,7 +521,7 @@ export default function PatientDoctorPage({
                         <div className="module-item-top">
                           <p className="module-item-title">{link.doctorName}</p>
                           <span className="module-pill module-pill-warning">
-                            {getStatusLabel(link.status)}
+                            {getLinkStatusLabel(link.status)}
                           </span>
                         </div>
                         <p className="module-item-text">{link.doctorEmail}</p>
@@ -677,58 +542,11 @@ export default function PatientDoctorPage({
                               Alterar permissões
                             </p>
 
-                            <div className="module-check-list module-check-list-compact">
-                              <label className="module-check-option module-check-option-compact">
-                                <input
-                                  type="checkbox"
-                                  checked={editingPermissions.canViewInformation}
-                                  onChange={(event) =>
-                                    handleToggleEditingPermission(
-                                      "canViewInformation",
-                                      event.target.checked
-                                    )
-                                  }
-                                />
-                                <div>
-                                  <strong>Informação</strong>
-                                  <span>Dados pessoais do paciente.</span>
-                                </div>
-                              </label>
-
-                              <label className="module-check-option module-check-option-compact">
-                                <input
-                                  type="checkbox"
-                                  checked={editingPermissions.canViewDecisions}
-                                  onChange={(event) =>
-                                    handleToggleEditingPermission(
-                                      "canViewDecisions",
-                                      event.target.checked
-                                    )
-                                  }
-                                />
-                                <div>
-                                  <strong>Decisões</strong>
-                                  <span>Diretivas e notas registadas.</span>
-                                </div>
-                              </label>
-
-                              <label className="module-check-option module-check-option-compact">
-                                <input
-                                  type="checkbox"
-                                  checked={editingPermissions.canViewDocuments}
-                                  onChange={(event) =>
-                                    handleToggleEditingPermission(
-                                      "canViewDocuments",
-                                      event.target.checked
-                                    )
-                                  }
-                                />
-                                <div>
-                                  <strong>Documentos</strong>
-                                  <span>Ficheiros carregados.</span>
-                                </div>
-                              </label>
-                            </div>
+                            <PermissionFields
+                              permissions={editingPermissions}
+                              onToggle={handleToggleEditingPermission}
+                              variant="inline"
+                            />
                           </div>
                         )}
 
@@ -802,18 +620,6 @@ export default function PatientDoctorPage({
 
             {!isLoading && activeLinks.length > 0 && (
               <section className="module-collection-panel">
-                <div className="module-collection-header">
-                  <div className="module-section-heading-group">
-                    <h3 className="module-subtitle">Médicos ligados</h3>
-                    <span className="module-section-count-circle">
-                      {activeLinks.length}
-                    </span>
-                  </div>
-                  <p className="module-inline-note">
-                    Estes acessos já foram aceites.
-                  </p>
-                </div>
-
                 <div className="module-item-list module-item-list-tight">
                   {activeLinks.map((link) => {
                     const permissionLabels = getDoctorPermissionLabels(
@@ -828,7 +634,7 @@ export default function PatientDoctorPage({
                         <div className="module-item-top">
                           <p className="module-item-title">{link.doctorName}</p>
                           <span className="module-pill">
-                            {getStatusLabel(link.status)}
+                            {getLinkStatusLabel(link.status)}
                           </span>
                         </div>
                         <p className="module-item-text">{link.doctorEmail}</p>
@@ -852,58 +658,11 @@ export default function PatientDoctorPage({
                               Alterar permissões
                             </p>
 
-                            <div className="module-check-list module-check-list-compact">
-                              <label className="module-check-option module-check-option-compact">
-                                <input
-                                  type="checkbox"
-                                  checked={editingPermissions.canViewInformation}
-                                  onChange={(event) =>
-                                    handleToggleEditingPermission(
-                                      "canViewInformation",
-                                      event.target.checked
-                                    )
-                                  }
-                                />
-                                <div>
-                                  <strong>Informação</strong>
-                                  <span>Dados pessoais do paciente.</span>
-                                </div>
-                              </label>
-
-                              <label className="module-check-option module-check-option-compact">
-                                <input
-                                  type="checkbox"
-                                  checked={editingPermissions.canViewDecisions}
-                                  onChange={(event) =>
-                                    handleToggleEditingPermission(
-                                      "canViewDecisions",
-                                      event.target.checked
-                                    )
-                                  }
-                                />
-                                <div>
-                                  <strong>Decisões</strong>
-                                  <span>Diretivas e notas registadas.</span>
-                                </div>
-                              </label>
-
-                              <label className="module-check-option module-check-option-compact">
-                                <input
-                                  type="checkbox"
-                                  checked={editingPermissions.canViewDocuments}
-                                  onChange={(event) =>
-                                    handleToggleEditingPermission(
-                                      "canViewDocuments",
-                                      event.target.checked
-                                    )
-                                  }
-                                />
-                                <div>
-                                  <strong>Documentos</strong>
-                                  <span>Ficheiros carregados.</span>
-                                </div>
-                              </label>
-                            </div>
+                            <PermissionFields
+                              permissions={editingPermissions}
+                              onToggle={handleToggleEditingPermission}
+                              variant="inline"
+                            />
                           </div>
                         )}
 
