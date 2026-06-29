@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
+import CaregiverNavigationMenu from "../components/CaregiverNavigationMenu";
+import DoctorNavigationMenu from "../components/DoctorNavigationMenu";
 import PatientNavigationMenu from "../components/PatientNavigationMenu";
 import type { AccountProfile, SignupFormData, User } from "../types/user";
 import {
@@ -23,7 +25,18 @@ type AccountPageProps = {
     onOpenHome: () => void;
     onOpenDecisions: () => void;
     onOpenCaregiver: () => void;
+    onOpenDoctor: () => void;
     onOpenDocuments: () => void;
+    onOpenAccount: () => void;
+  };
+  caregiverNavigation?: {
+    onOpenHome: () => void;
+    onOpenCaregiver: () => void;
+    onOpenAccount: () => void;
+  };
+  doctorNavigation?: {
+    onOpenHome: () => void;
+    onOpenPatients: () => void;
     onOpenAccount: () => void;
   };
 };
@@ -207,6 +220,8 @@ export default function AccountPage({
   onLogout,
   onUserUpdated,
   patientNavigation,
+  caregiverNavigation,
+  doctorNavigation,
 }: AccountPageProps) {
   const [formData, setFormData] = useState<AccountFormData>(() =>
     createInitialFormData(user)
@@ -569,8 +584,25 @@ export default function AccountPage({
               onOpenHome={patientNavigation.onOpenHome}
               onOpenDecisions={patientNavigation.onOpenDecisions}
               onOpenCaregiver={patientNavigation.onOpenCaregiver}
+              onOpenDoctor={patientNavigation.onOpenDoctor}
               onOpenDocuments={patientNavigation.onOpenDocuments}
               onOpenAccount={patientNavigation.onOpenAccount}
+              onLogout={onLogout}
+            />
+          ) : user.role === "caregiver" && caregiverNavigation ? (
+            <CaregiverNavigationMenu
+              currentScreen="account"
+              onOpenHome={caregiverNavigation.onOpenHome}
+              onOpenCaregiver={caregiverNavigation.onOpenCaregiver}
+              onOpenAccount={caregiverNavigation.onOpenAccount}
+              onLogout={onLogout}
+            />
+          ) : user.role === "doctor" && doctorNavigation ? (
+            <DoctorNavigationMenu
+              currentScreen="account"
+              onOpenHome={doctorNavigation.onOpenHome}
+              onOpenPatients={doctorNavigation.onOpenPatients}
+              onOpenAccount={doctorNavigation.onOpenAccount}
               onLogout={onLogout}
             />
           ) : (
