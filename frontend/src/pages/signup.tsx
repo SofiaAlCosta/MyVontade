@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { SignupFormData } from "../types/user";
 import {
   formatDoctorLicenseValue,
   formatNineDigitValue,
@@ -9,19 +10,6 @@ import {
 } from "../utils/profile";
 import "./signup.css";
 
-type SignupFormData = {
-  role: string;
-  name: string;
-  email: string;
-  password: string;
-  patientNumber: string;
-  dateOfBirth: string;
-  phoneNumber: string;
-  professionalLicense: string;
-  specialty: string;
-  relationshipToPatient: string;
-};
-
 type SignupProps = {
   message: string;
   onSignup: (formData: SignupFormData) => Promise<void>;
@@ -29,6 +17,19 @@ type SignupProps = {
 };
 
 type SignupErrors = Partial<Record<keyof SignupFormData, string>>;
+
+const initialFormData: SignupFormData = {
+  role: "",
+  name: "",
+  email: "",
+  password: "",
+  patientNumber: "",
+  dateOfBirth: "",
+  phoneNumber: "",
+  professionalLicense: "",
+  specialty: "",
+  relationshipToPatient: "",
+};
 
 const roleOptions = ["patient", "doctor", "caregiver"] as const;
 const passwordRules = [
@@ -83,18 +84,22 @@ export default function Signup({
   onSignup,
   onGoToLogin,
 }: SignupProps) {
-  const [role, setRole] = useState("");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [patientNumber, setPatientNumber] = useState("");
-  const [dateOfBirth, setDateOfBirth] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [professionalLicense, setProfessionalLicense] = useState("");
-  const [specialty, setSpecialty] = useState("");
-  const [relationshipToPatient, setRelationshipToPatient] = useState("");
+  const [formData, setFormData] = useState<SignupFormData>(initialFormData);
   const [errors, setErrors] = useState<SignupErrors>({});
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
+
+  const {
+    role,
+    name,
+    email,
+    password,
+    patientNumber,
+    dateOfBirth,
+    phoneNumber,
+    professionalLicense,
+    specialty,
+    relationshipToPatient,
+  } = formData;
 
   const isRoleSelected = role !== "";
   const shouldShowPasswordRules = isPasswordFocused || Boolean(errors.password);
@@ -109,6 +114,17 @@ export default function Signup({
       delete nextErrors[field];
       return nextErrors;
     });
+  };
+
+  const updateField = <Field extends keyof SignupFormData>(
+    field: Field,
+    value: SignupFormData[Field]
+  ) => {
+    setFormData((currentFormData) => ({
+      ...currentFormData,
+      [field]: value,
+    }));
+    clearError(field);
   };
 
   const applyValidationMessage = (
@@ -152,6 +168,12 @@ export default function Signup({
       nextErrors.password = passwordValidationMessage;
     }
 
+    if (!phoneNumber.trim()) {
+      nextErrors.phoneNumber = "Obrigatório";
+    } else if (!hasValidNineDigitFormat(phoneNumber)) {
+      nextErrors.phoneNumber = "Deve ter 9 dígitos";
+    }
+
     if (role === "patient") {
       if (!patientNumber.trim()) {
         nextErrors.patientNumber = "Obrigatório";
@@ -161,12 +183,6 @@ export default function Signup({
 
       if (!dateOfBirth.trim()) {
         nextErrors.dateOfBirth = "Obrigatório";
-      }
-
-      if (!phoneNumber.trim()) {
-        nextErrors.phoneNumber = "Obrigatório";
-      } else if (!hasValidNineDigitFormat(phoneNumber)) {
-        nextErrors.phoneNumber = "Deve ter 9 dígitos";
       }
     }
 
@@ -180,41 +196,26 @@ export default function Signup({
       if (!specialty.trim()) {
         nextErrors.specialty = "Obrigatório";
       }
-
-      if (!phoneNumber.trim()) {
-        nextErrors.phoneNumber = "Obrigatório";
-      } else if (!hasValidNineDigitFormat(phoneNumber)) {
-        nextErrors.phoneNumber = "Deve ter 9 dígitos";
-      }
     }
 
-    if (role === "caregiver") {
-      if (!relationshipToPatient.trim()) {
-        nextErrors.relationshipToPatient = "Obrigatório";
-      }
-
-      if (!phoneNumber.trim()) {
-        nextErrors.phoneNumber = "Obrigatório";
-      } else if (!hasValidNineDigitFormat(phoneNumber)) {
-        nextErrors.phoneNumber = "Deve ter 9 dígitos";
-      }
+    if (role === "caregiver" && !relationshipToPatient.trim()) {
+      nextErrors.relationshipToPatient = "Obrigatório";
     }
 
     return nextErrors;
   };
 
-  const resetRoleSpecificFields = () => {
-    setPatientNumber("");
-    setDateOfBirth("");
-    setProfessionalLicense("");
-    setSpecialty("");
-    setRelationshipToPatient("");
+  const resetRoleSpecificFields = (selectedRole: string) => {
+    setFormData((currentFormData) => ({
+      ...currentFormData,
+      role: selectedRole,
+      patientNumber: "",
+      dateOfBirth: "",
+      professionalLicense: "",
+      specialty: "",
+      relationshipToPatient: "",
+    }));
     setErrors({});
-  };
-
-  const handleRoleSelect = (selectedRole: string) => {
-    setRole(selectedRole);
-    resetRoleSpecificFields();
   };
 
   const handleSignup = async () => {
@@ -226,16 +227,8 @@ export default function Signup({
     }
 
     await onSignup({
-      role,
-      name,
-      email: email.trim(),
-      password,
-      patientNumber,
-      dateOfBirth,
-      phoneNumber,
-      professionalLicense,
-      specialty,
-      relationshipToPatient,
+      ...formData,
+      email: formData.email.trim(),
     });
   };
 
@@ -297,7 +290,7 @@ export default function Signup({
                     key={option}
                     className="role-button"
                     type="button"
-                    onClick={() => handleRoleSelect(option)}
+                    onClick={() => resetRoleSpecificFields(option)}
                   >
                     {getRoleLabel(option)}
                   </button>
@@ -316,7 +309,7 @@ export default function Signup({
                   className="change-role-button"
                   type="button"
                   onClick={() => {
-                    setRole("");
+                    updateField("role", "");
                     setErrors({});
                   }}
                 >
@@ -336,10 +329,7 @@ export default function Signup({
                     required
                     aria-invalid={Boolean(errors.name)}
                     value={name}
-                    onChange={(event) => {
-                      setName(event.target.value);
-                      clearError("name");
-                    }}
+                    onChange={(event) => updateField("name", event.target.value)}
                     className={errors.name ? "input-error" : ""}
                   />
                 </label>
@@ -357,10 +347,7 @@ export default function Signup({
                     required
                     aria-invalid={Boolean(errors.email)}
                     value={email}
-                    onChange={(event) => {
-                      setEmail(event.target.value);
-                      clearError("email");
-                    }}
+                    onChange={(event) => updateField("email", event.target.value)}
                     onBlur={handleEmailBlur}
                     className={errors.email ? "input-error" : ""}
                   />
@@ -381,10 +368,7 @@ export default function Signup({
                     aria-invalid={Boolean(errors.password)}
                     value={password}
                     onFocus={() => setIsPasswordFocused(true)}
-                    onChange={(event) => {
-                      setPassword(event.target.value);
-                      clearError("password");
-                    }}
+                    onChange={(event) => updateField("password", event.target.value)}
                     onBlur={handlePasswordBlur}
                     className={errors.password ? "input-error" : ""}
                   />
@@ -429,10 +413,12 @@ export default function Signup({
                         required
                         aria-invalid={Boolean(errors.patientNumber)}
                         value={patientNumber}
-                        onChange={(event) => {
-                          setPatientNumber(formatNineDigitValue(event.target.value));
-                          clearError("patientNumber");
-                        }}
+                        onChange={(event) =>
+                          updateField(
+                            "patientNumber",
+                            formatNineDigitValue(event.target.value)
+                          )
+                        }
                         className={errors.patientNumber ? "input-error" : ""}
                       />
                     </label>
@@ -449,10 +435,9 @@ export default function Signup({
                         required
                         aria-invalid={Boolean(errors.dateOfBirth)}
                         value={dateOfBirth}
-                        onChange={(event) => {
-                          setDateOfBirth(event.target.value);
-                          clearError("dateOfBirth");
-                        }}
+                        onChange={(event) =>
+                          updateField("dateOfBirth", event.target.value)
+                        }
                         className={errors.dateOfBirth ? "input-error" : ""}
                       />
                     </label>
@@ -472,10 +457,12 @@ export default function Signup({
                         required
                         aria-invalid={Boolean(errors.phoneNumber)}
                         value={phoneNumber}
-                        onChange={(event) => {
-                          setPhoneNumber(formatNineDigitValue(event.target.value));
-                          clearError("phoneNumber");
-                        }}
+                        onChange={(event) =>
+                          updateField(
+                            "phoneNumber",
+                            formatNineDigitValue(event.target.value)
+                          )
+                        }
                         className={errors.phoneNumber ? "input-error" : ""}
                       />
                     </label>
@@ -503,12 +490,12 @@ export default function Signup({
                         required
                         aria-invalid={Boolean(errors.professionalLicense)}
                         value={professionalLicense}
-                        onChange={(event) => {
-                          setProfessionalLicense(
+                        onChange={(event) =>
+                          updateField(
+                            "professionalLicense",
                             formatDoctorLicenseValue(event.target.value)
-                          );
-                          clearError("professionalLicense");
-                        }}
+                          )
+                        }
                         className={errors.professionalLicense ? "input-error" : ""}
                       />
                     </label>
@@ -526,10 +513,7 @@ export default function Signup({
                         required
                         aria-invalid={Boolean(errors.specialty)}
                         value={specialty}
-                        onChange={(event) => {
-                          setSpecialty(event.target.value);
-                          clearError("specialty");
-                        }}
+                        onChange={(event) => updateField("specialty", event.target.value)}
                         className={errors.specialty ? "input-error" : ""}
                       />
                     </label>
@@ -549,10 +533,12 @@ export default function Signup({
                         required
                         aria-invalid={Boolean(errors.phoneNumber)}
                         value={phoneNumber}
-                        onChange={(event) => {
-                          setPhoneNumber(formatNineDigitValue(event.target.value));
-                          clearError("phoneNumber");
-                        }}
+                        onChange={(event) =>
+                          updateField(
+                            "phoneNumber",
+                            formatNineDigitValue(event.target.value)
+                          )
+                        }
                         className={errors.phoneNumber ? "input-error" : ""}
                       />
                     </label>
@@ -578,10 +564,9 @@ export default function Signup({
                         required
                         aria-invalid={Boolean(errors.relationshipToPatient)}
                         value={relationshipToPatient}
-                        onChange={(event) => {
-                          setRelationshipToPatient(event.target.value);
-                          clearError("relationshipToPatient");
-                        }}
+                        onChange={(event) =>
+                          updateField("relationshipToPatient", event.target.value)
+                        }
                         className={errors.relationshipToPatient ? "input-error" : ""}
                       />
                     </label>
@@ -601,10 +586,12 @@ export default function Signup({
                         required
                         aria-invalid={Boolean(errors.phoneNumber)}
                         value={phoneNumber}
-                        onChange={(event) => {
-                          setPhoneNumber(formatNineDigitValue(event.target.value));
-                          clearError("phoneNumber");
-                        }}
+                        onChange={(event) =>
+                          updateField(
+                            "phoneNumber",
+                            formatNineDigitValue(event.target.value)
+                          )
+                        }
                         className={errors.phoneNumber ? "input-error" : ""}
                       />
                     </label>

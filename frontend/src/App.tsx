@@ -29,32 +29,24 @@ type Screen =
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 const LAST_LOGIN_EMAIL_KEY = "myvontade-last-login-email";
 
+const authMessages: Record<string, string> = {
+  missing_required_fields: "Preenche os campos obrigatórios.",
+  invalid_role: "Escolhe um tipo de utilizador válido.",
+  user_already_exists: "Já existe uma conta com estes dados.",
+  invalid_credentials: "Email ou palavra-passe inválidos.",
+  invalid_field_format: "Existem campos com formato inválido.",
+};
+
 function getInitialScreen(): Screen {
   return window.location.hash === "#signup" ? "signup" : "login";
 }
 
 function getErrorMessage(error: string | undefined) {
-  if (error === "missing_required_fields") {
-    return "Preenche os campos obrigatórios.";
-  }
+  return authMessages[error ?? ""] ?? "Ocorreu um erro. Tenta novamente.";
+}
 
-  if (error === "invalid_role") {
-    return "Escolhe um tipo de utilizador válido.";
-  }
-
-  if (error === "user_already_exists") {
-    return "Já existe uma conta com estes dados.";
-  }
-
-  if (error === "invalid_credentials") {
-    return "Email ou palavra-passe inválidos.";
-  }
-
-  if (error === "invalid_field_format") {
-    return "Existem campos com formato inválido.";
-  }
-
-  return "Ocorreu um erro. Tenta novamente.";
+function normalizeEmail(value: string) {
+  return value.trim().toLowerCase();
 }
 
 export default function App() {
@@ -81,90 +73,65 @@ export default function App() {
     });
   }, [currentUser, screen]);
 
-  const goToLogin = () => {
-    setMessage("");
-    setScreen("login");
+  const openScreen = (nextScreen: Screen, clearMessage = false) => {
+    if (clearMessage) {
+      setMessage("");
+    }
+
+    setScreen(nextScreen);
   };
 
-  const goToSignup = () => {
-    setMessage("");
-    setScreen("signup");
-  };
-
-  const goToHome = () => {
-    setScreen("home");
-  };
-
-  const goToAccount = () => {
-    setScreen("account");
-  };
-
-  const goToDecisions = () => {
-    setScreen("decisions");
-  };
-
-  const goToCaregiver = () => {
-    setScreen("caregiver");
-  };
-
-  const goToDoctor = () => {
-    setScreen("doctor");
-  };
-
-  const goToCaregiverPatients = () => {
-    setScreen("caregiverPatients");
-  };
-
-  const goToDoctorPatients = () => {
-    setScreen("doctorPatients");
-  };
-
-  const goToDocuments = () => {
-    setScreen("documents");
-  };
+  const openLogin = () => openScreen("login", true);
+  const openSignup = () => openScreen("signup", true);
+  const openHome = () => openScreen("home");
+  const openAccount = () => openScreen("account");
+  const openDecisions = () => openScreen("decisions");
+  const openCaregiver = () => openScreen("caregiver");
+  const openDoctor = () => openScreen("doctor");
+  const openCaregiverPatients = () => openScreen("caregiverPatients");
+  const openDoctorPatients = () => openScreen("doctorPatients");
+  const openDocuments = () => openScreen("documents");
 
   const patientNavigation =
     currentUser?.role === "patient"
       ? {
-          onOpenHome: goToHome,
-          onOpenDecisions: goToDecisions,
-          onOpenCaregiver: goToCaregiver,
-          onOpenDoctor: goToDoctor,
-          onOpenDocuments: goToDocuments,
-          onOpenAccount: goToAccount,
+          onOpenHome: openHome,
+          onOpenDecisions: openDecisions,
+          onOpenCaregiver: openCaregiver,
+          onOpenDoctor: openDoctor,
+          onOpenDocuments: openDocuments,
+          onOpenAccount: openAccount,
         }
       : undefined;
 
   const caregiverNavigation =
     currentUser?.role === "caregiver"
       ? {
-          onOpenHome: goToHome,
-          onOpenCaregiver: goToCaregiverPatients,
-          onOpenAccount: goToAccount,
+          onOpenHome: openHome,
+          onOpenCaregiver: openCaregiverPatients,
+          onOpenAccount: openAccount,
         }
       : undefined;
 
   const doctorNavigation =
     currentUser?.role === "doctor"
       ? {
-          onOpenHome: goToHome,
-          onOpenPatients: goToDoctorPatients,
-          onOpenAccount: goToAccount,
+          onOpenHome: openHome,
+          onOpenPatients: openDoctorPatients,
+          onOpenAccount: openAccount,
         }
       : undefined;
 
   const handleLogout = () => {
     setCurrentUser(null);
-    setMessage("");
-    setScreen("login");
+    openLogin();
   };
 
   const handleAccountDeleted = () => {
-    const deletedEmail = currentUser?.email.trim().toLowerCase();
-    const savedEmail = window.localStorage
-      .getItem(LAST_LOGIN_EMAIL_KEY)
-      ?.trim()
-      .toLowerCase();
+    const deletedEmail = normalizeEmail(currentUser?.email ?? "");
+    const savedEmail = normalizeEmail(
+      window.localStorage.getItem(LAST_LOGIN_EMAIL_KEY) ?? ""
+    );
 
     if (deletedEmail && savedEmail === deletedEmail) {
       window.localStorage.removeItem(LAST_LOGIN_EMAIL_KEY);
@@ -198,7 +165,7 @@ export default function App() {
 
       window.localStorage.setItem(
         LAST_LOGIN_EMAIL_KEY,
-        formData.email.trim().toLowerCase()
+        normalizeEmail(formData.email)
       );
       setMessage("Conta criada com sucesso. Agora já podes entrar.");
       setScreen("login");
@@ -211,12 +178,16 @@ export default function App() {
     setMessage("");
 
     try {
+      const normalizedEmail = normalizeEmail(email);
       const response = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          email: normalizedEmail,
+          password,
+        }),
       });
 
       const data = (await response.json()) as {
@@ -229,10 +200,7 @@ export default function App() {
         return;
       }
 
-      window.localStorage.setItem(
-        LAST_LOGIN_EMAIL_KEY,
-        email.trim().toLowerCase()
-      );
+      window.localStorage.setItem(LAST_LOGIN_EMAIL_KEY, normalizedEmail);
       setCurrentUser(data.user);
       setScreen("home");
     } catch {
@@ -240,205 +208,168 @@ export default function App() {
     }
   };
 
-  if (currentUser) {
-    if (currentUser.role === "patient") {
-      if (screen === "account") {
-        return (
-          <AccountPage
-            apiUrl={API_URL}
-            user={currentUser}
-            onBack={goToHome}
-            onAccountDeleted={handleAccountDeleted}
-            onLogout={handleLogout}
-            onUserUpdated={setCurrentUser}
-            patientNavigation={patientNavigation}
-            caregiverNavigation={caregiverNavigation}
-            doctorNavigation={doctorNavigation}
-          />
-        );
-      }
+  const renderAccountPage = () => {
+    if (!currentUser) {
+      return null;
+    }
 
-      if (screen === "decisions") {
+    return (
+      <AccountPage
+        apiUrl={API_URL}
+        user={currentUser}
+        onBack={openHome}
+        onAccountDeleted={handleAccountDeleted}
+        onLogout={handleLogout}
+        onUserUpdated={setCurrentUser}
+        patientNavigation={patientNavigation}
+        caregiverNavigation={caregiverNavigation}
+        doctorNavigation={doctorNavigation}
+      />
+    );
+  };
+
+  if (!currentUser) {
+    return (
+      <div className="app-shell">
+        {screen === "login" ? (
+          <Login
+            message={message}
+            onGoToSignup={openSignup}
+            onLogin={handleLogin}
+          />
+        ) : (
+          <Signup
+            message={message}
+            onGoToLogin={openLogin}
+            onSignup={handleSignup}
+          />
+        )}
+      </div>
+    );
+  }
+
+  if (screen === "account") {
+    return renderAccountPage();
+  }
+
+  if (currentUser.role === "patient") {
+    switch (screen) {
+      case "decisions":
         return (
           <DecisionsPage
             apiUrl={API_URL}
             user={currentUser}
-            onOpenHome={goToHome}
-            onOpenDecisions={goToDecisions}
-            onOpenCaregiver={goToCaregiver}
-            onOpenDoctor={goToDoctor}
-            onOpenDocuments={goToDocuments}
-            onOpenAccount={goToAccount}
+            onOpenHome={openHome}
+            onOpenDecisions={openDecisions}
+            onOpenCaregiver={openCaregiver}
+            onOpenDoctor={openDoctor}
+            onOpenDocuments={openDocuments}
+            onOpenAccount={openAccount}
             onLogout={handleLogout}
           />
         );
-      }
-
-      if (screen === "documents") {
+      case "documents":
         return (
           <DocumentsPage
             apiUrl={API_URL}
             user={currentUser}
-            onOpenHome={goToHome}
-            onOpenDecisions={goToDecisions}
-            onOpenCaregiver={goToCaregiver}
-            onOpenDoctor={goToDoctor}
-            onOpenDocuments={goToDocuments}
-            onOpenAccount={goToAccount}
+            onOpenHome={openHome}
+            onOpenDecisions={openDecisions}
+            onOpenCaregiver={openCaregiver}
+            onOpenDoctor={openDoctor}
+            onOpenDocuments={openDocuments}
+            onOpenAccount={openAccount}
             onLogout={handleLogout}
           />
         );
-      }
-
-      if (screen === "caregiver") {
+      case "caregiver":
         return (
           <PatientCaregiverPage
             apiUrl={API_URL}
             user={currentUser}
-            onOpenHome={goToHome}
-            onOpenDecisions={goToDecisions}
-            onOpenCaregiver={goToCaregiver}
-            onOpenDoctor={goToDoctor}
-            onOpenDocuments={goToDocuments}
-            onOpenAccount={goToAccount}
+            onOpenHome={openHome}
+            onOpenDecisions={openDecisions}
+            onOpenCaregiver={openCaregiver}
+            onOpenDoctor={openDoctor}
+            onOpenDocuments={openDocuments}
+            onOpenAccount={openAccount}
             onLogout={handleLogout}
           />
         );
-      }
-
-      if (screen === "doctor") {
+      case "doctor":
         return (
           <PatientDoctorPage
             apiUrl={API_URL}
             user={currentUser}
-            onOpenHome={goToHome}
-            onOpenDecisions={goToDecisions}
-            onOpenCaregiver={goToCaregiver}
-            onOpenDoctor={goToDoctor}
-            onOpenDocuments={goToDocuments}
-            onOpenAccount={goToAccount}
+            onOpenHome={openHome}
+            onOpenDecisions={openDecisions}
+            onOpenCaregiver={openCaregiver}
+            onOpenDoctor={openDoctor}
+            onOpenDocuments={openDocuments}
+            onOpenAccount={openAccount}
             onLogout={handleLogout}
           />
         );
-      }
-
-      return (
-        <PatientHome
-          apiUrl={API_URL}
-          user={currentUser}
-          onOpenHome={goToHome}
-          onOpenDecisions={goToDecisions}
-          onOpenCaregiver={goToCaregiver}
-          onOpenDoctor={goToDoctor}
-          onOpenDocuments={goToDocuments}
-          onOpenAccount={goToAccount}
-          onLogout={handleLogout}
-        />
-      );
-    }
-
-    if (currentUser.role === "caregiver") {
-      if (screen === "account") {
+      default:
         return (
-          <AccountPage
+          <PatientHome
             apiUrl={API_URL}
             user={currentUser}
-            onBack={goToHome}
-            onAccountDeleted={handleAccountDeleted}
-            onLogout={handleLogout}
-            onUserUpdated={setCurrentUser}
-            patientNavigation={patientNavigation}
-            caregiverNavigation={caregiverNavigation}
-            doctorNavigation={doctorNavigation}
-          />
-        );
-      }
-
-      if (screen === "caregiverPatients") {
-        return (
-          <CaregiverPatientsPage
-            apiUrl={API_URL}
-            user={currentUser}
-            onOpenHome={goToHome}
-            onOpenCaregiver={goToCaregiverPatients}
-            onOpenAccount={goToAccount}
+            onOpenHome={openHome}
+            onOpenDecisions={openDecisions}
+            onOpenCaregiver={openCaregiver}
+            onOpenDoctor={openDoctor}
+            onOpenDocuments={openDocuments}
+            onOpenAccount={openAccount}
             onLogout={handleLogout}
           />
         );
-      }
-
-      return (
-        <CaregiverHome
-          apiUrl={API_URL}
-          user={currentUser}
-          onOpenHome={goToHome}
-          onOpenCaregiver={goToCaregiverPatients}
-          onOpenAccount={goToAccount}
-          onLogout={handleLogout}
-        />
-      );
     }
-
-    if (screen === "account") {
-      return (
-        <AccountPage
-          apiUrl={API_URL}
-          user={currentUser}
-          onBack={goToHome}
-          onAccountDeleted={handleAccountDeleted}
-          onLogout={handleLogout}
-          onUserUpdated={setCurrentUser}
-          patientNavigation={patientNavigation}
-          caregiverNavigation={caregiverNavigation}
-          doctorNavigation={doctorNavigation}
-        />
-      );
-    }
-
-    if (screen === "doctorPatients") {
-      return (
-        <DoctorPatientsPage
-          apiUrl={API_URL}
-          user={currentUser}
-          onOpenHome={goToHome}
-          onOpenPatients={goToDoctorPatients}
-          onOpenAccount={goToAccount}
-          onLogout={handleLogout}
-        />
-      );
-    }
-
-    if (currentUser.role === "doctor") {
-      return (
-        <DoctorHome
-          apiUrl={API_URL}
-          user={currentUser}
-          onOpenHome={goToHome}
-          onOpenPatients={goToDoctorPatients}
-          onOpenAccount={goToAccount}
-          onLogout={handleLogout}
-        />
-      );
-    }
-
-    return null;
   }
 
-  return (
-    <div className="app-shell">
-      {screen === "login" ? (
-        <Login
-          message={message}
-          onGoToSignup={goToSignup}
-          onLogin={handleLogin}
-        />
-      ) : (
-        <Signup
-          message={message}
-          onGoToLogin={goToLogin}
-          onSignup={handleSignup}
-        />
-      )}
-    </div>
-  );
+  if (currentUser.role === "caregiver") {
+    return screen === "caregiverPatients" ? (
+      <CaregiverPatientsPage
+        apiUrl={API_URL}
+        user={currentUser}
+        onOpenHome={openHome}
+        onOpenCaregiver={openCaregiverPatients}
+        onOpenAccount={openAccount}
+        onLogout={handleLogout}
+      />
+    ) : (
+      <CaregiverHome
+        apiUrl={API_URL}
+        user={currentUser}
+        onOpenHome={openHome}
+        onOpenCaregiver={openCaregiverPatients}
+        onOpenAccount={openAccount}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
+  if (currentUser.role === "doctor") {
+    return screen === "doctorPatients" ? (
+      <DoctorPatientsPage
+        apiUrl={API_URL}
+        user={currentUser}
+        onOpenHome={openHome}
+        onOpenPatients={openDoctorPatients}
+        onOpenAccount={openAccount}
+        onLogout={handleLogout}
+      />
+    ) : (
+      <DoctorHome
+        apiUrl={API_URL}
+        user={currentUser}
+        onOpenHome={openHome}
+        onOpenPatients={openDoctorPatients}
+        onOpenAccount={openAccount}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
+  return null;
 }
