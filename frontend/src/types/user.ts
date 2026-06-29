@@ -103,6 +103,20 @@ export type PatientCaregiverLink = {
   respondedAt: string;
 };
 
+export type PatientDoctorLink = {
+  id: number;
+  doctorId: number;
+  doctorName: string;
+  doctorEmail: string;
+  doctorPhoneNumber: string;
+  professionalLicense: string;
+  specialty: string;
+  permissions: CaregiverSharePermissions;
+  status: CaregiverLinkStatus;
+  createdAt: string;
+  respondedAt: string;
+};
+
 export type CaregiverPatientLink = {
   id: number;
   patientId: number;
@@ -112,6 +126,20 @@ export type CaregiverPatientLink = {
   patientNumber: string;
   dateOfBirth: string;
   relationshipToPatient: string;
+  permissions: CaregiverSharePermissions;
+  status: CaregiverLinkStatus;
+  createdAt: string;
+  respondedAt: string;
+};
+
+export type DoctorPatientLink = {
+  id: number;
+  patientId: number;
+  patientName: string;
+  patientEmail: string;
+  patientPhoneNumber: string;
+  patientNumber: string;
+  dateOfBirth: string;
   permissions: CaregiverSharePermissions;
   status: CaregiverLinkStatus;
   createdAt: string;
@@ -132,3 +160,5 @@ export type CaregiverPatientOverview = {
   decisions: PatientDecisions | null;
   documents: PatientDocument[];
 };
+
+export type DoctorPatientOverview = CaregiverPatientOverview;

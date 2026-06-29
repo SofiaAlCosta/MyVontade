@@ -212,6 +212,44 @@ type ActiveCaregiverLinkAccessRow = {
   can_view_documents: boolean;
 };
 
+type PatientDoctorLinkRow = {
+  id: number;
+  doctor_user_id: number;
+  doctor_name: string;
+  doctor_email: string;
+  doctor_phone_number: string | null;
+  professional_license: string | null;
+  specialty: string | null;
+  can_view_information: boolean;
+  can_view_decisions: boolean;
+  can_view_documents: boolean;
+  status: CaregiverLinkStatus;
+  created_at: string;
+  responded_at: string | null;
+};
+
+type DoctorPatientLinkRow = {
+  id: number;
+  patient_user_id: number;
+  patient_name: string;
+  patient_email: string;
+  patient_phone_number: string | null;
+  patient_number: string | null;
+  date_of_birth: string | null;
+  can_view_information: boolean;
+  can_view_decisions: boolean;
+  can_view_documents: boolean;
+  status: CaregiverLinkStatus;
+  created_at: string;
+  responded_at: string | null;
+};
+
+type ActiveDoctorLinkAccessRow = {
+  can_view_information: boolean;
+  can_view_decisions: boolean;
+  can_view_documents: boolean;
+};
+
 async function ensureCaregiverLinksTable() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS patient_caregiver_links (
@@ -253,6 +291,50 @@ async function ensureCaregiverLinksTable() {
 
   await pool.query(`
     ALTER TABLE patient_caregiver_links
+    ADD COLUMN IF NOT EXISTS can_view_documents BOOLEAN NOT NULL DEFAULT TRUE
+  `);
+}
+
+async function ensureDoctorLinksTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS patient_doctor_links (
+      id SERIAL PRIMARY KEY,
+      patient_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      doctor_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      can_view_information BOOLEAN NOT NULL DEFAULT TRUE,
+      can_view_decisions BOOLEAN NOT NULL DEFAULT TRUE,
+      can_view_documents BOOLEAN NOT NULL DEFAULT TRUE,
+      status TEXT NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'active', 'revoked')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      responded_at TIMESTAMPTZ NULL,
+      UNIQUE (patient_user_id, doctor_user_id)
+    )
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS patient_doctor_links_patient_idx
+    ON patient_doctor_links (patient_user_id, status)
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS patient_doctor_links_doctor_idx
+    ON patient_doctor_links (doctor_user_id, status)
+  `);
+
+  await pool.query(`
+    ALTER TABLE patient_doctor_links
+    ADD COLUMN IF NOT EXISTS can_view_information BOOLEAN NOT NULL DEFAULT TRUE
+  `);
+
+  await pool.query(`
+    ALTER TABLE patient_doctor_links
+    ADD COLUMN IF NOT EXISTS can_view_decisions BOOLEAN NOT NULL DEFAULT TRUE
+  `);
+
+  await pool.query(`
+    ALTER TABLE patient_doctor_links
     ADD COLUMN IF NOT EXISTS can_view_documents BOOLEAN NOT NULL DEFAULT TRUE
   `);
 }
@@ -695,6 +777,41 @@ function buildCaregiverPatientLinkResponse(row: CaregiverPatientLinkRow) {
   };
 }
 
+function buildPatientDoctorLinkResponse(row: PatientDoctorLinkRow) {
+  return {
+    id: row.id,
+    doctorId: row.doctor_user_id,
+    doctorName: row.doctor_name,
+    doctorEmail: row.doctor_email,
+    doctorPhoneNumber: row.doctor_phone_number ?? "",
+    professionalLicense: row.professional_license ?? "",
+    specialty: row.specialty ?? "",
+    permissions: buildCaregiverSharePermissions(row),
+    status: row.status,
+    createdAt: row.created_at,
+    respondedAt: row.responded_at ?? "",
+  };
+}
+
+function buildDoctorPatientLinkResponse(row: DoctorPatientLinkRow) {
+  const permissions = buildCaregiverSharePermissions(row);
+
+  return {
+    id: row.id,
+    patientId: row.patient_user_id,
+    patientName: row.patient_name,
+    patientEmail: permissions.canViewInformation ? row.patient_email : "",
+    patientPhoneNumber:
+      permissions.canViewInformation ? row.patient_phone_number ?? "" : "",
+    patientNumber: permissions.canViewInformation ? row.patient_number ?? "" : "",
+    dateOfBirth: permissions.canViewInformation ? row.date_of_birth ?? "" : "",
+    permissions,
+    status: row.status,
+    createdAt: row.created_at,
+    respondedAt: row.responded_at ?? "",
+  };
+}
+
 async function getAccountByUserId(userId: number) {
   const result = await pool.query<AccountRow>(
     `
@@ -968,6 +1085,96 @@ async function getActiveCaregiverLinkAccess(
         AND status = 'active'
     `,
     [caregiverUserId, patientUserId]
+  );
+
+  return result.rows[0] ?? null;
+}
+
+async function getPatientDoctorLinksByUserId(userId: number) {
+  const result = await pool.query<PatientDoctorLinkRow>(
+    `
+      SELECT
+        patient_doctor_links.id,
+        patient_doctor_links.doctor_user_id,
+        users.name AS doctor_name,
+        users.email AS doctor_email,
+        doctors.phone_number AS doctor_phone_number,
+        doctors.professional_license,
+        doctors.specialty,
+        patient_doctor_links.can_view_information,
+        patient_doctor_links.can_view_decisions,
+        patient_doctor_links.can_view_documents,
+        patient_doctor_links.status,
+        patient_doctor_links.created_at::text AS created_at,
+        patient_doctor_links.responded_at::text AS responded_at
+      FROM patient_doctor_links
+      INNER JOIN users ON users.id = patient_doctor_links.doctor_user_id
+      LEFT JOIN doctors ON doctors.user_id = users.id
+      WHERE patient_doctor_links.patient_user_id = $1
+        AND patient_doctor_links.status IN ('pending', 'active')
+      ORDER BY
+        CASE patient_doctor_links.status
+          WHEN 'active' THEN 0
+          ELSE 1
+        END,
+        patient_doctor_links.created_at DESC,
+        patient_doctor_links.id DESC
+    `,
+    [userId]
+  );
+
+  return result.rows.map(buildPatientDoctorLinkResponse);
+}
+
+async function getDoctorPatientLinksByUserId(userId: number) {
+  const result = await pool.query<DoctorPatientLinkRow>(
+    `
+      SELECT
+        patient_doctor_links.id,
+        patient_doctor_links.patient_user_id,
+        users.name AS patient_name,
+        users.email AS patient_email,
+        patients.phone_number AS patient_phone_number,
+        patients.patient_number,
+        patients.date_of_birth::text AS date_of_birth,
+        patient_doctor_links.can_view_information,
+        patient_doctor_links.can_view_decisions,
+        patient_doctor_links.can_view_documents,
+        patient_doctor_links.status,
+        patient_doctor_links.created_at::text AS created_at,
+        patient_doctor_links.responded_at::text AS responded_at
+      FROM patient_doctor_links
+      INNER JOIN users ON users.id = patient_doctor_links.patient_user_id
+      LEFT JOIN patients ON patients.user_id = users.id
+      WHERE patient_doctor_links.doctor_user_id = $1
+        AND patient_doctor_links.status IN ('pending', 'active')
+      ORDER BY
+        CASE patient_doctor_links.status
+          WHEN 'pending' THEN 0
+          ELSE 1
+        END,
+        patient_doctor_links.created_at DESC,
+        patient_doctor_links.id DESC
+    `,
+    [userId]
+  );
+
+  return result.rows.map(buildDoctorPatientLinkResponse);
+}
+
+async function getActiveDoctorLinkAccess(doctorUserId: number, patientUserId: number) {
+  const result = await pool.query<ActiveDoctorLinkAccessRow>(
+    `
+      SELECT
+        can_view_information,
+        can_view_decisions,
+        can_view_documents
+      FROM patient_doctor_links
+      WHERE doctor_user_id = $1
+        AND patient_user_id = $2
+        AND status = 'active'
+    `,
+    [doctorUserId, patientUserId]
   );
 
   return result.rows[0] ?? null;
@@ -1355,6 +1562,314 @@ app.put("/api/users/:id/caregiver-links/:linkId/permissions", async (req, res) =
   return res.json({ link });
 });
 
+app.get("/api/users/:id/doctor-links", async (req, res) => {
+  const userId = Number.parseInt(String(req.params.id ?? ""), 10);
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ error: "invalid_user_id" });
+  }
+
+  const userResult = await pool.query<{ role: string }>(
+    `
+      SELECT role
+      FROM users
+      WHERE id = $1
+    `,
+    [userId]
+  );
+
+  const role = userResult.rows[0]?.role;
+
+  if (!role) {
+    return res.status(404).json({ error: "user_not_found" });
+  }
+
+  if (role !== "patient") {
+    return res.status(400).json({ error: "invalid_role" });
+  }
+
+  const links = await getPatientDoctorLinksByUserId(userId);
+  return res.json({ links });
+});
+
+app.post("/api/users/:id/doctor-links", async (req, res) => {
+  const userId = Number.parseInt(String(req.params.id ?? ""), 10);
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ error: "invalid_user_id" });
+  }
+
+  const doctorEmail = String(req.body.doctorEmail ?? "")
+    .trim()
+    .toLowerCase();
+  const permissions = getRequestedCaregiverPermissions(req.body.permissions);
+
+  const userResult = await pool.query<{ role: string }>(
+    `
+      SELECT role
+      FROM users
+      WHERE id = $1
+    `,
+    [userId]
+  );
+
+  const role = userResult.rows[0]?.role;
+
+  if (!role) {
+    return res.status(404).json({ error: "user_not_found" });
+  }
+
+  if (role !== "patient") {
+    return res.status(400).json({ error: "invalid_role" });
+  }
+
+  if (!doctorEmail) {
+    return res.status(400).json({
+      error: "missing_required_fields",
+      missingFields: ["doctorEmail"],
+    });
+  }
+
+  if (!hasAnyCaregiverPermission(permissions)) {
+    return res.status(400).json({ error: "missing_permissions" });
+  }
+
+  if (!hasValidEmailFormat(doctorEmail)) {
+    return res.status(400).json({
+      error: "invalid_field_format",
+      invalidFields: ["doctorEmail"],
+    });
+  }
+
+  const doctorResult = await pool.query<{ id: number }>(
+    `
+      SELECT users.id
+      FROM users
+      INNER JOIN doctors ON doctors.user_id = users.id
+      WHERE users.email = $1
+        AND users.role = 'doctor'
+    `,
+    [doctorEmail]
+  );
+
+  const doctorId = doctorResult.rows[0]?.id;
+
+  if (!doctorId) {
+    return res.status(404).json({ error: "doctor_not_found" });
+  }
+
+  const existingLinkResult = await pool.query<{
+    id: number;
+    status: string;
+  }>(
+    `
+      SELECT id, status
+      FROM patient_doctor_links
+      WHERE patient_user_id = $1
+        AND doctor_user_id = $2
+    `,
+    [userId, doctorId]
+  );
+
+  const existingLink = existingLinkResult.rows[0];
+
+  if (existingLink?.status === "active") {
+    return res.status(409).json({ error: "doctor_already_connected" });
+  }
+
+  let linkId: number | undefined;
+  let statusCode = 201;
+
+  if (existingLink?.id) {
+    statusCode = 200;
+
+    const updateResult = await pool.query<{ id: number }>(
+      `
+        UPDATE patient_doctor_links
+        SET can_view_information = $3,
+            can_view_decisions = $4,
+            can_view_documents = $5,
+            status = 'pending',
+            responded_at = NULL,
+            updated_at = NOW()
+        WHERE id = $1
+          AND patient_user_id = $2
+        RETURNING id
+      `,
+      [
+        existingLink.id,
+        userId,
+        permissions.canViewInformation,
+        permissions.canViewDecisions,
+        permissions.canViewDocuments,
+      ]
+    );
+
+    linkId = updateResult.rows[0]?.id;
+  } else {
+    const insertResult = await pool.query<{ id: number }>(
+      `
+        INSERT INTO patient_doctor_links (
+          patient_user_id,
+          doctor_user_id,
+          can_view_information,
+          can_view_decisions,
+          can_view_documents
+        )
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING id
+      `,
+      [
+        userId,
+        doctorId,
+        permissions.canViewInformation,
+        permissions.canViewDecisions,
+        permissions.canViewDocuments,
+      ]
+    );
+
+    linkId = insertResult.rows[0]?.id;
+  }
+
+  if (!linkId) {
+    return res.status(500).json({ error: "server_error" });
+  }
+
+  const links = await getPatientDoctorLinksByUserId(userId);
+  const link = links.find((entry) => entry.id === linkId);
+
+  if (!link) {
+    return res.status(500).json({ error: "server_error" });
+  }
+
+  return res.status(statusCode).json({ link });
+});
+
+app.post("/api/users/:id/doctor-links/:linkId/revoke", async (req, res) => {
+  const userId = Number.parseInt(String(req.params.id ?? ""), 10);
+  const linkId = Number.parseInt(String(req.params.linkId ?? ""), 10);
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ error: "invalid_user_id" });
+  }
+
+  if (!Number.isInteger(linkId) || linkId <= 0) {
+    return res.status(400).json({ error: "invalid_link_id" });
+  }
+
+  const userResult = await pool.query<{ role: string }>(
+    `
+      SELECT role
+      FROM users
+      WHERE id = $1
+    `,
+    [userId]
+  );
+
+  const role = userResult.rows[0]?.role;
+
+  if (!role) {
+    return res.status(404).json({ error: "user_not_found" });
+  }
+
+  if (role !== "patient") {
+    return res.status(400).json({ error: "invalid_role" });
+  }
+
+  const updateResult = await pool.query(
+    `
+      UPDATE patient_doctor_links
+      SET status = 'revoked',
+          responded_at = NOW(),
+          updated_at = NOW()
+      WHERE id = $1
+        AND patient_user_id = $2
+        AND status IN ('pending', 'active')
+    `,
+    [linkId, userId]
+  );
+
+  if (updateResult.rowCount === 0) {
+    return res.status(404).json({ error: "link_not_found" });
+  }
+
+  return res.json({ status: "revoked" });
+});
+
+app.put("/api/users/:id/doctor-links/:linkId/permissions", async (req, res) => {
+  const userId = Number.parseInt(String(req.params.id ?? ""), 10);
+  const linkId = Number.parseInt(String(req.params.linkId ?? ""), 10);
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ error: "invalid_user_id" });
+  }
+
+  if (!Number.isInteger(linkId) || linkId <= 0) {
+    return res.status(400).json({ error: "invalid_link_id" });
+  }
+
+  const permissions = getRequestedCaregiverPermissions(req.body.permissions);
+
+  if (!hasAnyCaregiverPermission(permissions)) {
+    return res.status(400).json({ error: "missing_permissions" });
+  }
+
+  const userResult = await pool.query<{ role: string }>(
+    `
+      SELECT role
+      FROM users
+      WHERE id = $1
+    `,
+    [userId]
+  );
+
+  const role = userResult.rows[0]?.role;
+
+  if (!role) {
+    return res.status(404).json({ error: "user_not_found" });
+  }
+
+  if (role !== "patient") {
+    return res.status(400).json({ error: "invalid_role" });
+  }
+
+  const updateResult = await pool.query<{ id: number }>(
+    `
+      UPDATE patient_doctor_links
+      SET can_view_information = $3,
+          can_view_decisions = $4,
+          can_view_documents = $5,
+          updated_at = NOW()
+      WHERE id = $1
+        AND patient_user_id = $2
+        AND status IN ('pending', 'active')
+      RETURNING id
+    `,
+    [
+      linkId,
+      userId,
+      permissions.canViewInformation,
+      permissions.canViewDecisions,
+      permissions.canViewDocuments,
+    ]
+  );
+
+  const updatedLinkId = updateResult.rows[0]?.id;
+
+  if (!updatedLinkId) {
+    return res.status(404).json({ error: "link_not_found" });
+  }
+
+  const links = await getPatientDoctorLinksByUserId(userId);
+  const link = links.find((entry) => entry.id === updatedLinkId);
+
+  if (!link) {
+    return res.status(500).json({ error: "server_error" });
+  }
+
+  return res.json({ link });
+});
+
 app.get("/api/users/:id/patient-links", async (req, res) => {
   const userId = Number.parseInt(String(req.params.id ?? ""), 10);
 
@@ -1527,6 +2042,178 @@ app.post("/api/users/:id/patient-links/:linkId/accept", async (req, res) => {
   return res.json({ link });
 });
 
+app.get("/api/users/:id/doctor-patient-links", async (req, res) => {
+  const userId = Number.parseInt(String(req.params.id ?? ""), 10);
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ error: "invalid_user_id" });
+  }
+
+  const userResult = await pool.query<{ role: string }>(
+    `
+      SELECT role
+      FROM users
+      WHERE id = $1
+    `,
+    [userId]
+  );
+
+  const role = userResult.rows[0]?.role;
+
+  if (!role) {
+    return res.status(404).json({ error: "user_not_found" });
+  }
+
+  if (role !== "doctor") {
+    return res.status(400).json({ error: "invalid_role" });
+  }
+
+  const links = await getDoctorPatientLinksByUserId(userId);
+  return res.json({ links });
+});
+
+app.get("/api/users/:id/doctor-patient-links/:patientId/overview", async (req, res) => {
+  const userId = Number.parseInt(String(req.params.id ?? ""), 10);
+  const patientId = Number.parseInt(String(req.params.patientId ?? ""), 10);
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ error: "invalid_user_id" });
+  }
+
+  if (!Number.isInteger(patientId) || patientId <= 0) {
+    return res.status(400).json({ error: "invalid_patient_id" });
+  }
+
+  const userResult = await pool.query<{ role: string }>(
+    `
+      SELECT role
+      FROM users
+      WHERE id = $1
+    `,
+    [userId]
+  );
+
+  const role = userResult.rows[0]?.role;
+
+  if (!role) {
+    return res.status(404).json({ error: "user_not_found" });
+  }
+
+  if (role !== "doctor") {
+    return res.status(400).json({ error: "invalid_role" });
+  }
+
+  const accessRow = await getActiveDoctorLinkAccess(userId, patientId);
+
+  if (!accessRow) {
+    return res.status(403).json({ error: "access_denied" });
+  }
+
+  const permissions = buildCaregiverSharePermissions(accessRow);
+
+  const [account, dashboard, decisions, documents] = await Promise.all([
+    permissions.canViewInformation
+      ? getAccountByUserId(patientId)
+      : Promise.resolve(null),
+    permissions.canViewDecisions
+      ? getPatientDashboardByUserId(patientId)
+      : Promise.resolve(null),
+    permissions.canViewDecisions
+      ? getPatientDecisionsByUserId(patientId)
+      : Promise.resolve(null),
+    permissions.canViewDocuments
+      ? getPatientDocumentsByUserId(patientId)
+      : Promise.resolve([]),
+  ]);
+
+  if (
+    (permissions.canViewInformation &&
+      (!account || account.user.role !== "patient")) ||
+    (permissions.canViewDecisions && (!dashboard || !decisions))
+  ) {
+    return res.status(404).json({ error: "user_not_found" });
+  }
+
+  return res.json({
+    permissions,
+    patient:
+      permissions.canViewInformation && account
+        ? {
+            id: account.user.id,
+            name: account.user.name,
+            email: account.user.email,
+            phoneNumber: account.profile.phoneNumber,
+            patientNumber: account.profile.patientNumber,
+            dateOfBirth: account.profile.dateOfBirth,
+          }
+        : null,
+    dashboard: permissions.canViewDecisions ? dashboard : null,
+    decisions: permissions.canViewDecisions ? decisions : null,
+    documents,
+  });
+});
+
+app.post("/api/users/:id/doctor-patient-links/:linkId/accept", async (req, res) => {
+  const userId = Number.parseInt(String(req.params.id ?? ""), 10);
+  const linkId = Number.parseInt(String(req.params.linkId ?? ""), 10);
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ error: "invalid_user_id" });
+  }
+
+  if (!Number.isInteger(linkId) || linkId <= 0) {
+    return res.status(400).json({ error: "invalid_link_id" });
+  }
+
+  const userResult = await pool.query<{ role: string }>(
+    `
+      SELECT role
+      FROM users
+      WHERE id = $1
+    `,
+    [userId]
+  );
+
+  const role = userResult.rows[0]?.role;
+
+  if (!role) {
+    return res.status(404).json({ error: "user_not_found" });
+  }
+
+  if (role !== "doctor") {
+    return res.status(400).json({ error: "invalid_role" });
+  }
+
+  const updateResult = await pool.query<{ id: number }>(
+    `
+      UPDATE patient_doctor_links
+      SET status = 'active',
+          responded_at = NOW(),
+          updated_at = NOW()
+      WHERE id = $1
+        AND doctor_user_id = $2
+        AND status = 'pending'
+      RETURNING id
+    `,
+    [linkId, userId]
+  );
+
+  const acceptedLinkId = updateResult.rows[0]?.id;
+
+  if (!acceptedLinkId) {
+    return res.status(404).json({ error: "link_not_found" });
+  }
+
+  const links = await getDoctorPatientLinksByUserId(userId);
+  const link = links.find((entry) => entry.id === acceptedLinkId);
+
+  if (!link) {
+    return res.status(500).json({ error: "server_error" });
+  }
+
+  return res.json({ link });
+});
+
 app.get("/api/users/:id/documents", async (req, res) => {
   const userId = Number.parseInt(String(req.params.id ?? ""), 10);
 
@@ -1597,6 +2284,15 @@ app.get("/api/users/:id/documents/:documentId/file", async (req, res) => {
     }
   } else if (role === "caregiver") {
     const accessRow = await getActiveCaregiverLinkAccess(
+      userId,
+      storedDocument.patient_user_id
+    );
+
+    if (!accessRow || !accessRow.can_view_documents) {
+      return res.status(403).json({ error: "access_denied" });
+    }
+  } else if (role === "doctor") {
+    const accessRow = await getActiveDoctorLinkAccess(
       userId,
       storedDocument.patient_user_id
     );
@@ -1697,6 +2393,15 @@ app.delete("/api/users/:id/account", async (req, res) => {
         DELETE FROM patient_caregiver_links
         WHERE patient_user_id = $1
            OR caregiver_user_id = $1
+      `,
+      [userId]
+    );
+
+    await client.query(
+      `
+        DELETE FROM patient_doctor_links
+        WHERE patient_user_id = $1
+           OR doctor_user_id = $1
       `,
       [userId]
     );
@@ -2576,6 +3281,7 @@ const port = Number(process.env.PORT ?? 3001);
 
 async function startServer() {
   await ensureCaregiverLinksTable();
+  await ensureDoctorLinksTable();
 
   app.listen(port, () => {
     console.log(`API a correr na porta ${port}`);
