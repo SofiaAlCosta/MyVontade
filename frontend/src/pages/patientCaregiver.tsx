@@ -15,6 +15,7 @@ type PatientCaregiverPageProps = {
   onOpenHome: () => void;
   onOpenDecisions: () => void;
   onOpenCaregiver: () => void;
+  onOpenDoctor: () => void;
   onOpenDocuments: () => void;
   onOpenAccount: () => void;
   onLogout: () => void;
@@ -114,6 +115,7 @@ export default function PatientCaregiverPage({
   onOpenHome,
   onOpenDecisions,
   onOpenCaregiver,
+  onOpenDoctor,
   onOpenDocuments,
   onOpenAccount,
   onLogout,
@@ -434,6 +436,7 @@ export default function PatientCaregiverPage({
             onOpenHome={onOpenHome}
             onOpenDecisions={onOpenDecisions}
             onOpenCaregiver={onOpenCaregiver}
+            onOpenDoctor={onOpenDoctor}
             onOpenDocuments={onOpenDocuments}
             onOpenAccount={onOpenAccount}
             onLogout={onLogout}
@@ -450,493 +453,553 @@ export default function PatientCaregiverPage({
           <div className="module-section-heading">
             <div className="module-section-heading-group">
               <h2 className="module-card-title">Ligações atuais</h2>
-              <span className="module-section-count-circle">{activeLinks.length}</span>
+              <span className="module-section-count-circle">{links.length}</span>
             </div>
             {isLoading && (
               <p className="module-inline-note">A carregar ligações atuais...</p>
             )}
           </div>
 
-          {message && (
-            <p
-              className={`module-form-message module-form-message-${messageTone}`}
-              role="status"
+          <div className="module-management-layout">
+            <section
+              className={`module-action-panel ${
+                isInviteFormOpen ? "module-action-panel-open" : ""
+              }`}
             >
-              {message}
-            </p>
-          )}
-
-          {!isLoading && pendingLinks.length > 0 && (
-            <div className="module-stack">
-              <h3 className="module-subtitle">Convites pendentes</h3>
-
-              <div className="module-item-list">
-                {pendingLinks.map((link) => {
-                  const permissionLabels = getCaregiverPermissionLabels(
-                    link.permissions
-                  );
-                  const hasPermissionChanges =
-                    editingLinkId === link.id &&
-                    !hasSamePermissions(editingPermissions, link.permissions);
-
-                  return (
-                    <article key={link.id} className="module-item">
-                      <div className="module-item-top">
-                        <p className="module-item-title">{link.caregiverName}</p>
-                        <span className="module-pill module-pill-warning">
-                          {getStatusLabel(link.status)}
-                        </span>
-                      </div>
-                      <p className="module-item-text">{link.caregiverEmail}</p>
-                      <p className="module-item-text">
-                        Relação: {link.relationshipToPatient}
-                      </p>
-                      <div className="module-tag-list">
-                        {permissionLabels.map((label) => (
-                          <span key={label} className="module-tag">
-                            {label}
-                          </span>
-                        ))}
-                      </div>
-
-                      {editingLinkId === link.id && (
-                        <div className="module-inline-editor">
-                          <p className="module-inline-editor-title">
-                            Alterar permissões
-                          </p>
-
-                          <div className="module-check-list module-check-list-compact">
-                            <label className="module-check-option module-check-option-compact">
-                              <input
-                                type="checkbox"
-                                checked={editingPermissions.canViewInformation}
-                                onChange={(event) =>
-                                  handleToggleEditingPermission(
-                                    "canViewInformation",
-                                    event.target.checked
-                                  )
-                                }
-                              />
-                              <div>
-                                <strong>Informação</strong>
-                                <span>Dados pessoais do paciente.</span>
-                              </div>
-                            </label>
-
-                            <label className="module-check-option module-check-option-compact">
-                              <input
-                                type="checkbox"
-                                checked={editingPermissions.canViewDecisions}
-                                onChange={(event) =>
-                                  handleToggleEditingPermission(
-                                    "canViewDecisions",
-                                    event.target.checked
-                                  )
-                                }
-                              />
-                              <div>
-                                <strong>Decisões</strong>
-                                <span>Diretivas e notas registadas.</span>
-                              </div>
-                            </label>
-
-                            <label className="module-check-option module-check-option-compact">
-                              <input
-                                type="checkbox"
-                                checked={editingPermissions.canViewDocuments}
-                                onChange={(event) =>
-                                  handleToggleEditingPermission(
-                                    "canViewDocuments",
-                                    event.target.checked
-                                  )
-                                }
-                              />
-                              <div>
-                                <strong>Documentos</strong>
-                                <span>Ficheiros carregados.</span>
-                              </div>
-                            </label>
-                          </div>
-                        </div>
-                      )}
-
-                      <p className="module-note">
-                        Convite enviado em {formatDateTime(link.createdAt)}.
-                      </p>
-
-                      <div className="module-inline-actions">
-                        {editingLinkId === link.id ? (
-                          <>
-                            <button
-                              className={`module-inline-button ${
-                                hasPermissionChanges
-                                  ? ""
-                                  : "module-inline-button-muted"
-                              }`}
-                              type="button"
-                              disabled={actionLinkId === link.id || !hasPermissionChanges}
-                              onClick={() => {
-                                void handleSavePermissions(link.id);
-                              }}
-                            >
-                              {actionLinkId === link.id
-                                ? "A guardar..."
-                                : "Guardar permissões"}
-                            </button>
-                            <button
-                              className="module-inline-button"
-                              type="button"
-                              disabled={actionLinkId === link.id}
-                              onClick={handleCancelEditingPermissions}
-                            >
-                              Cancelar
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            className="module-inline-button"
-                            type="button"
-                            disabled={actionLinkId === link.id}
-                            onClick={() => {
-                              handleStartEditingPermissions(link);
-                            }}
-                          >
-                            Alterar permissões
-                          </button>
-                        )}
-
-                        <button
-                          className="module-inline-button"
-                          type="button"
-                          disabled={actionLinkId === link.id}
-                          onClick={() => {
-                            void handleRevoke(link.id);
-                          }}
-                        >
-                          {actionLinkId === link.id
-                            ? "A cancelar..."
-                            : "Cancelar convite"}
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })}
-            </div>
-            </div>
-          )}
-
-          {!isLoading && activeLinks.length > 0 && (
-            <div className="module-stack">
-              <div className="module-item-list">
-                {activeLinks.map((link) => {
-                  const permissionLabels = getCaregiverPermissionLabels(
-                    link.permissions
-                  );
-                  const hasPermissionChanges =
-                    editingLinkId === link.id &&
-                    !hasSamePermissions(editingPermissions, link.permissions);
-
-                  return (
-                    <article key={link.id} className="module-item">
-                      <div className="module-item-top">
-                        <p className="module-item-title">{link.caregiverName}</p>
-                        <span className="module-pill">{getStatusLabel(link.status)}</span>
-                      </div>
-                      <p className="module-item-text">{link.caregiverEmail}</p>
-                      <p className="module-item-text">
-                        Relação: {link.relationshipToPatient}
-                      </p>
-                      <div className="module-tag-list">
-                        {permissionLabels.map((label) => (
-                          <span key={label} className="module-tag">
-                            {label}
-                          </span>
-                        ))}
-                      </div>
-
-                      {editingLinkId === link.id && (
-                        <div className="module-inline-editor">
-                          <p className="module-inline-editor-title">
-                            Alterar permissões
-                          </p>
-
-                          <div className="module-check-list module-check-list-compact">
-                            <label className="module-check-option module-check-option-compact">
-                              <input
-                                type="checkbox"
-                                checked={editingPermissions.canViewInformation}
-                                onChange={(event) =>
-                                  handleToggleEditingPermission(
-                                    "canViewInformation",
-                                    event.target.checked
-                                  )
-                                }
-                              />
-                              <div>
-                                <strong>Informação</strong>
-                                <span>Dados pessoais do paciente.</span>
-                              </div>
-                            </label>
-
-                            <label className="module-check-option module-check-option-compact">
-                              <input
-                                type="checkbox"
-                                checked={editingPermissions.canViewDecisions}
-                                onChange={(event) =>
-                                  handleToggleEditingPermission(
-                                    "canViewDecisions",
-                                    event.target.checked
-                                  )
-                                }
-                              />
-                              <div>
-                                <strong>Decisões</strong>
-                                <span>Diretivas e notas registadas.</span>
-                              </div>
-                            </label>
-
-                            <label className="module-check-option module-check-option-compact">
-                              <input
-                                type="checkbox"
-                                checked={editingPermissions.canViewDocuments}
-                                onChange={(event) =>
-                                  handleToggleEditingPermission(
-                                    "canViewDocuments",
-                                    event.target.checked
-                                  )
-                                }
-                              />
-                              <div>
-                                <strong>Documentos</strong>
-                                <span>Ficheiros carregados.</span>
-                              </div>
-                            </label>
-                          </div>
-                        </div>
-                      )}
-
-                      <p className="module-item-text">
-                        Telefone: {link.caregiverPhoneNumber || "Por definir"}
-                      </p>
-                      <p className="module-note">
-                        Ligação aceite em {formatDateTime(link.respondedAt)}.
-                      </p>
-
-                      <div className="module-inline-actions">
-                        {editingLinkId === link.id ? (
-                          <>
-                            <button
-                              className={`module-inline-button ${
-                                hasPermissionChanges
-                                  ? ""
-                                  : "module-inline-button-muted"
-                              }`}
-                              type="button"
-                              disabled={actionLinkId === link.id || !hasPermissionChanges}
-                              onClick={() => {
-                                void handleSavePermissions(link.id);
-                              }}
-                            >
-                              {actionLinkId === link.id
-                                ? "A guardar..."
-                                : "Guardar permissões"}
-                            </button>
-                            <button
-                              className="module-inline-button"
-                              type="button"
-                              disabled={actionLinkId === link.id}
-                              onClick={handleCancelEditingPermissions}
-                            >
-                              Cancelar
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            className="module-inline-button"
-                            type="button"
-                            disabled={actionLinkId === link.id}
-                            onClick={() => {
-                              handleStartEditingPermissions(link);
-                            }}
-                          >
-                            Alterar permissões
-                          </button>
-                        )}
-
-                        <button
-                          className="module-inline-button"
-                          type="button"
-                          disabled={actionLinkId === link.id}
-                          onClick={() => {
-                            void handleRevoke(link.id);
-                          }}
-                        >
-                          {actionLinkId === link.id
-                            ? "A remover..."
-                            : "Remover ligação"}
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          <div
-            className={`module-section-action ${
-              hasAnyLinks ? "module-section-action-separated" : ""
-            }`}
-          >
-            <div className="module-card-action module-card-action-start">
-              {isInviteFormOpen ? (
-                <button
-                  className="module-inline-button"
-                  type="button"
-                  onClick={() => {
-                    setIsInviteFormOpen(false);
-                    setErrors({});
-                  }}
-                >
-                  Fechar formulário
-                </button>
-              ) : (
-                <button
-                  className="module-card-button module-card-button-compact"
-                  type="button"
-                  onClick={() => {
-                    setIsInviteFormOpen(true);
-                    setMessage("");
-                  }}
-                >
-                  Convidar
-                </button>
-              )}
-            </div>
-
-            {isInviteFormOpen && (
-              <form
-                className="module-form"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void handleSubmit();
-                }}
-              >
-                <fieldset className="module-fieldset" disabled={isSaving}>
-                  <label className="module-field">
-                    <div className="module-field-label">
-                      <span>Email da conta do cuidador</span>
-                      {errors.caregiverEmail && (
-                        <span className="module-field-error">
-                          {errors.caregiverEmail}
-                        </span>
-                      )}
-                    </div>
-                    <input
-                      type="email"
-                      value={formData.caregiverEmail}
-                      aria-invalid={Boolean(errors.caregiverEmail)}
-                      className={errors.caregiverEmail ? "module-input-error" : ""}
-                      onChange={(event) =>
-                        updateField("caregiverEmail", event.target.value)
-                      }
-                    />
-                  </label>
-
-                  <label className="module-field">
-                    <div className="module-field-label">
-                      <span>Relação com o paciente</span>
-                      {errors.relationshipToPatient && (
-                        <span className="module-field-error">
-                          {errors.relationshipToPatient}
-                        </span>
-                      )}
-                    </div>
-                    <input
-                      type="text"
-                      value={formData.relationshipToPatient}
-                      aria-invalid={Boolean(errors.relationshipToPatient)}
-                      className={
-                        errors.relationshipToPatient ? "module-input-error" : ""
-                      }
-                      onChange={(event) =>
-                        updateField("relationshipToPatient", event.target.value)
-                      }
-                    />
-                  </label>
-
-                  <div className="module-field">
-                    <div className="module-field-label">
-                      <span>Áreas que queres partilhar</span>
-                      {errors.permissions && (
-                        <span className="module-field-error">
-                          {errors.permissions}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="module-check-list">
-                      <label className="module-check-option">
-                        <input
-                          type="checkbox"
-                          checked={formData.permissions.canViewInformation}
-                          onChange={(event) =>
-                            togglePermission(
-                              "canViewInformation",
-                              event.target.checked
-                            )
-                          }
-                        />
-                        <div>
-                          <strong>Informação</strong>
-                          <span>
-                            Email, telefone, número de utente e data de nascimento.
-                          </span>
-                        </div>
-                      </label>
-
-                      <label className="module-check-option">
-                        <input
-                          type="checkbox"
-                          checked={formData.permissions.canViewDecisions}
-                          onChange={(event) =>
-                            togglePermission("canViewDecisions", event.target.checked)
-                          }
-                        />
-                        <div>
-                          <strong>Decisões</strong>
-                          <span>Diretivas principais e notas registadas.</span>
-                        </div>
-                      </label>
-
-                      <label className="module-check-option">
-                        <input
-                          type="checkbox"
-                          checked={formData.permissions.canViewDocuments}
-                          onChange={(event) =>
-                            togglePermission("canViewDocuments", event.target.checked)
-                          }
-                        />
-                        <div>
-                          <strong>Documentos</strong>
-                          <span>Ficheiros carregados e respetivo descarregamento.</span>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-
-                  <p className="module-note">
-                    O cuidador precisa de ter uma conta criada com o perfil
-                    `cuidador` para poderes enviar o convite.
+              <div className="module-action-panel-header">
+                <div className="module-action-panel-copy">
+                  <h3 className="module-subtitle">Convidar cuidador</h3>
+                  <p className="module-inline-note">
+                    Envia um convite e define as áreas que o cuidador vai poder
+                    consultar.
                   </p>
+                </div>
 
-                  <div className="module-card-actions">
-                    <button className="module-card-button" type="submit">
-                      {isSaving ? "A enviar..." : "Enviar convite"}
+                <div className="module-card-action module-card-action-start">
+                  {isInviteFormOpen ? (
+                    <button
+                      className="module-inline-button"
+                      type="button"
+                      onClick={() => {
+                        setIsInviteFormOpen(false);
+                        setErrors({});
+                      }}
+                    >
+                      Fechar formulário
                     </button>
+                  ) : (
+                    <button
+                      className="module-card-button module-card-button-compact"
+                      type="button"
+                      onClick={() => {
+                        setIsInviteFormOpen(true);
+                        setMessage("");
+                      }}
+                    >
+                      Convidar cuidador
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {message && (
+                <p
+                  className={`module-form-message module-form-message-${messageTone}`}
+                  role="status"
+                >
+                  {message}
+                </p>
+              )}
+
+              {isInviteFormOpen && (
+                <form
+                  className="module-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void handleSubmit();
+                  }}
+                >
+                  <fieldset className="module-fieldset" disabled={isSaving}>
+                    <label className="module-field">
+                      <div className="module-field-label">
+                        <span>Email da conta do cuidador</span>
+                        {errors.caregiverEmail && (
+                          <span className="module-field-error">
+                            {errors.caregiverEmail}
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        type="email"
+                        value={formData.caregiverEmail}
+                        aria-invalid={Boolean(errors.caregiverEmail)}
+                        className={errors.caregiverEmail ? "module-input-error" : ""}
+                        onChange={(event) =>
+                          updateField("caregiverEmail", event.target.value)
+                        }
+                      />
+                    </label>
+
+                    <label className="module-field">
+                      <div className="module-field-label">
+                        <span>Relação com o paciente</span>
+                        {errors.relationshipToPatient && (
+                          <span className="module-field-error">
+                            {errors.relationshipToPatient}
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        value={formData.relationshipToPatient}
+                        aria-invalid={Boolean(errors.relationshipToPatient)}
+                        className={
+                          errors.relationshipToPatient ? "module-input-error" : ""
+                        }
+                        onChange={(event) =>
+                          updateField("relationshipToPatient", event.target.value)
+                        }
+                      />
+                    </label>
+
+                    <div className="module-field">
+                      <div className="module-field-label">
+                        <span>Áreas que queres partilhar</span>
+                        {errors.permissions && (
+                          <span className="module-field-error">
+                            {errors.permissions}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="module-check-list">
+                        <label className="module-check-option">
+                          <input
+                            type="checkbox"
+                            checked={formData.permissions.canViewInformation}
+                            onChange={(event) =>
+                              togglePermission(
+                                "canViewInformation",
+                                event.target.checked
+                              )
+                            }
+                          />
+                          <div>
+                            <strong>Informação</strong>
+                            <span>
+                              Email, telefone, número de utente e data de
+                              nascimento.
+                            </span>
+                          </div>
+                        </label>
+
+                        <label className="module-check-option">
+                          <input
+                            type="checkbox"
+                            checked={formData.permissions.canViewDecisions}
+                            onChange={(event) =>
+                              togglePermission(
+                                "canViewDecisions",
+                                event.target.checked
+                              )
+                            }
+                          />
+                          <div>
+                            <strong>Decisões</strong>
+                            <span>Diretivas principais e notas registadas.</span>
+                          </div>
+                        </label>
+
+                        <label className="module-check-option">
+                          <input
+                            type="checkbox"
+                            checked={formData.permissions.canViewDocuments}
+                            onChange={(event) =>
+                              togglePermission(
+                                "canViewDocuments",
+                                event.target.checked
+                              )
+                            }
+                          />
+                          <div>
+                            <strong>Documentos</strong>
+                            <span>
+                              Ficheiros carregados e respetivo descarregamento.
+                            </span>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+
+                    <p className="module-note">
+                      O cuidador precisa de ter uma conta criada com o perfil
+                      `cuidador` para poderes enviar o convite.
+                    </p>
+
+                    <div className="module-card-actions">
+                      <button className="module-card-button" type="submit">
+                        {isSaving ? "A enviar..." : "Enviar convite"}
+                      </button>
+                    </div>
+                  </fieldset>
+                </form>
+              )}
+            </section>
+
+            {!isLoading && pendingLinks.length > 0 && (
+              <section className="module-collection-panel">
+                <div className="module-collection-header">
+                  <div className="module-section-heading-group">
+                    <h3 className="module-subtitle">Convites pendentes</h3>
+                    <span className="module-section-count-circle">
+                      {pendingLinks.length}
+                    </span>
                   </div>
-                </fieldset>
-              </form>
+                </div>
+
+                <div className="module-item-list module-item-list-tight">
+                  {pendingLinks.map((link) => {
+                    const permissionLabels = getCaregiverPermissionLabels(
+                      link.permissions
+                    );
+                    const hasPermissionChanges =
+                      editingLinkId === link.id &&
+                      !hasSamePermissions(editingPermissions, link.permissions);
+
+                    return (
+                      <article key={link.id} className="module-item">
+                        <div className="module-item-top">
+                          <p className="module-item-title">{link.caregiverName}</p>
+                          <span className="module-pill module-pill-warning">
+                            {getStatusLabel(link.status)}
+                          </span>
+                        </div>
+                        <p className="module-item-text">{link.caregiverEmail}</p>
+                        <p className="module-item-text">
+                          Relação: {link.relationshipToPatient}
+                        </p>
+                        <div className="module-tag-list">
+                          {permissionLabels.map((label) => (
+                            <span key={label} className="module-tag">
+                              {label}
+                            </span>
+                          ))}
+                        </div>
+
+                        {editingLinkId === link.id && (
+                          <div className="module-inline-editor">
+                            <p className="module-inline-editor-title">
+                              Alterar permissões
+                            </p>
+
+                            <div className="module-check-list module-check-list-compact">
+                              <label className="module-check-option module-check-option-compact">
+                                <input
+                                  type="checkbox"
+                                  checked={editingPermissions.canViewInformation}
+                                  onChange={(event) =>
+                                    handleToggleEditingPermission(
+                                      "canViewInformation",
+                                      event.target.checked
+                                    )
+                                  }
+                                />
+                                <div>
+                                  <strong>Informação</strong>
+                                  <span>Dados pessoais do paciente.</span>
+                                </div>
+                              </label>
+
+                              <label className="module-check-option module-check-option-compact">
+                                <input
+                                  type="checkbox"
+                                  checked={editingPermissions.canViewDecisions}
+                                  onChange={(event) =>
+                                    handleToggleEditingPermission(
+                                      "canViewDecisions",
+                                      event.target.checked
+                                    )
+                                  }
+                                />
+                                <div>
+                                  <strong>Decisões</strong>
+                                  <span>Diretivas e notas registadas.</span>
+                                </div>
+                              </label>
+
+                              <label className="module-check-option module-check-option-compact">
+                                <input
+                                  type="checkbox"
+                                  checked={editingPermissions.canViewDocuments}
+                                  onChange={(event) =>
+                                    handleToggleEditingPermission(
+                                      "canViewDocuments",
+                                      event.target.checked
+                                    )
+                                  }
+                                />
+                                <div>
+                                  <strong>Documentos</strong>
+                                  <span>Ficheiros carregados.</span>
+                                </div>
+                              </label>
+                            </div>
+                          </div>
+                        )}
+
+                        <p className="module-note">
+                          Convite enviado em {formatDateTime(link.createdAt)}.
+                        </p>
+
+                        <div className="module-inline-actions">
+                          {editingLinkId === link.id ? (
+                            <>
+                              <button
+                                className={`module-inline-button ${
+                                  hasPermissionChanges
+                                    ? ""
+                                    : "module-inline-button-muted"
+                                }`}
+                                type="button"
+                                disabled={
+                                  actionLinkId === link.id ||
+                                  !hasPermissionChanges
+                                }
+                                onClick={() => {
+                                  void handleSavePermissions(link.id);
+                                }}
+                              >
+                                {actionLinkId === link.id
+                                  ? "A guardar..."
+                                  : "Guardar permissões"}
+                              </button>
+                              <button
+                                className="module-inline-button"
+                                type="button"
+                                disabled={actionLinkId === link.id}
+                                onClick={handleCancelEditingPermissions}
+                              >
+                                Cancelar
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              className="module-inline-button"
+                              type="button"
+                              disabled={actionLinkId === link.id}
+                              onClick={() => {
+                                handleStartEditingPermissions(link);
+                              }}
+                            >
+                              Alterar permissões
+                            </button>
+                          )}
+
+                          <button
+                            className="module-inline-button"
+                            type="button"
+                            disabled={actionLinkId === link.id}
+                            onClick={() => {
+                              void handleRevoke(link.id);
+                            }}
+                          >
+                            {actionLinkId === link.id
+                              ? "A cancelar..."
+                              : "Cancelar convite"}
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {!isLoading && activeLinks.length > 0 && (
+              <section className="module-collection-panel">
+                <div className="module-collection-header">
+                  <div className="module-section-heading-group">
+                    <h3 className="module-subtitle">Cuidadores ligados</h3>
+                    <span className="module-section-count-circle">
+                      {activeLinks.length}
+                    </span>
+                  </div>
+                  <p className="module-inline-note">
+                    Estes acessos já foram aceites.
+                  </p>
+                </div>
+
+                <div className="module-item-list module-item-list-tight">
+                  {activeLinks.map((link) => {
+                    const permissionLabels = getCaregiverPermissionLabels(
+                      link.permissions
+                    );
+                    const hasPermissionChanges =
+                      editingLinkId === link.id &&
+                      !hasSamePermissions(editingPermissions, link.permissions);
+
+                    return (
+                      <article key={link.id} className="module-item">
+                        <div className="module-item-top">
+                          <p className="module-item-title">{link.caregiverName}</p>
+                          <span className="module-pill">
+                            {getStatusLabel(link.status)}
+                          </span>
+                        </div>
+                        <p className="module-item-text">{link.caregiverEmail}</p>
+                        <p className="module-item-text">
+                          Relação: {link.relationshipToPatient}
+                        </p>
+                        <div className="module-tag-list">
+                          {permissionLabels.map((label) => (
+                            <span key={label} className="module-tag">
+                              {label}
+                            </span>
+                          ))}
+                        </div>
+
+                        {editingLinkId === link.id && (
+                          <div className="module-inline-editor">
+                            <p className="module-inline-editor-title">
+                              Alterar permissões
+                            </p>
+
+                            <div className="module-check-list module-check-list-compact">
+                              <label className="module-check-option module-check-option-compact">
+                                <input
+                                  type="checkbox"
+                                  checked={editingPermissions.canViewInformation}
+                                  onChange={(event) =>
+                                    handleToggleEditingPermission(
+                                      "canViewInformation",
+                                      event.target.checked
+                                    )
+                                  }
+                                />
+                                <div>
+                                  <strong>Informação</strong>
+                                  <span>Dados pessoais do paciente.</span>
+                                </div>
+                              </label>
+
+                              <label className="module-check-option module-check-option-compact">
+                                <input
+                                  type="checkbox"
+                                  checked={editingPermissions.canViewDecisions}
+                                  onChange={(event) =>
+                                    handleToggleEditingPermission(
+                                      "canViewDecisions",
+                                      event.target.checked
+                                    )
+                                  }
+                                />
+                                <div>
+                                  <strong>Decisões</strong>
+                                  <span>Diretivas e notas registadas.</span>
+                                </div>
+                              </label>
+
+                              <label className="module-check-option module-check-option-compact">
+                                <input
+                                  type="checkbox"
+                                  checked={editingPermissions.canViewDocuments}
+                                  onChange={(event) =>
+                                    handleToggleEditingPermission(
+                                      "canViewDocuments",
+                                      event.target.checked
+                                    )
+                                  }
+                                />
+                                <div>
+                                  <strong>Documentos</strong>
+                                  <span>Ficheiros carregados.</span>
+                                </div>
+                              </label>
+                            </div>
+                          </div>
+                        )}
+
+                        <p className="module-item-text">
+                          Telefone: {link.caregiverPhoneNumber || "Por definir"}
+                        </p>
+                        <p className="module-note">
+                          Ligação aceite em {formatDateTime(link.respondedAt)}.
+                        </p>
+
+                        <div className="module-inline-actions">
+                          {editingLinkId === link.id ? (
+                            <>
+                              <button
+                                className={`module-inline-button ${
+                                  hasPermissionChanges
+                                    ? ""
+                                    : "module-inline-button-muted"
+                                }`}
+                                type="button"
+                                disabled={
+                                  actionLinkId === link.id ||
+                                  !hasPermissionChanges
+                                }
+                                onClick={() => {
+                                  void handleSavePermissions(link.id);
+                                }}
+                              >
+                                {actionLinkId === link.id
+                                  ? "A guardar..."
+                                  : "Guardar permissões"}
+                              </button>
+                              <button
+                                className="module-inline-button"
+                                type="button"
+                                disabled={actionLinkId === link.id}
+                                onClick={handleCancelEditingPermissions}
+                              >
+                                Cancelar
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              className="module-inline-button"
+                              type="button"
+                              disabled={actionLinkId === link.id}
+                              onClick={() => {
+                                handleStartEditingPermissions(link);
+                              }}
+                            >
+                              Alterar permissões
+                            </button>
+                          )}
+
+                          <button
+                            className="module-inline-button"
+                            type="button"
+                            disabled={actionLinkId === link.id}
+                            onClick={() => {
+                              void handleRevoke(link.id);
+                            }}
+                          >
+                            {actionLinkId === link.id
+                              ? "A remover..."
+                              : "Remover ligação"}
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {!isLoading && !hasAnyLinks && !isInviteFormOpen && (
+              <section className="module-collection-panel module-collection-panel-empty">
+                <div className="module-collection-copy">
+                  <h3 className="module-subtitle">Ainda sem cuidadores ligados</h3>
+                  <p className="module-inline-note">
+                    Quando um cuidador aceitar o teu convite, a ligação vai
+                    aparecer aqui.
+                  </p>
+                </div>
+              </section>
             )}
           </div>
         </section>

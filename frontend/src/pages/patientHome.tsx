@@ -16,6 +16,7 @@ type HomeProps = {
   onOpenHome: () => void;
   onOpenDecisions: () => void;
   onOpenCaregiver: () => void;
+  onOpenDoctor: () => void;
   onOpenDocuments: () => void;
   onOpenAccount: () => void;
   onLogout: () => void;
@@ -63,6 +64,7 @@ export default function PatientHome({
   onOpenHome,
   onOpenDecisions,
   onOpenCaregiver,
+  onOpenDoctor,
   onOpenDocuments,
   onOpenAccount,
   onLogout,
@@ -225,6 +227,7 @@ export default function PatientHome({
               onOpenHome={onOpenHome}
               onOpenDecisions={onOpenDecisions}
               onOpenCaregiver={onOpenCaregiver}
+              onOpenDoctor={onOpenDoctor}
               onOpenDocuments={onOpenDocuments}
               onOpenAccount={onOpenAccount}
               onLogout={onLogout}
@@ -377,8 +380,7 @@ export default function PatientHome({
                       <dd className="home-caregiver-sheet-value">
                         <div className="home-caregiver-sheet-value-stack">
                           <span>
-                            {primaryCaregiver.caregiverEmail ||
-                              "Email por definir"}
+                            {primaryCaregiver.caregiverEmail || "Email por definir"}
                           </span>
                           <span>
                             {primaryCaregiver.caregiverPhoneNumber ||
@@ -438,9 +440,7 @@ export default function PatientHome({
                           : ""
                       }`}
                     >
-                      {pendingCaregiverLinks.length > 0
-                        ? "Pendente"
-                        : "Por ligar"}
+                      {pendingCaregiverLinks.length > 0 ? "Pendente" : "Por ligar"}
                     </span>
                   </div>
 
@@ -455,9 +455,7 @@ export default function PatientHome({
                     </div>
 
                     <div className="home-caregiver-sheet-row">
-                      <dt className="home-caregiver-sheet-label">
-                        Próximo passo
-                      </dt>
+                      <dt className="home-caregiver-sheet-label">Próximo passo</dt>
                       <dd className="home-caregiver-sheet-value">
                         {pendingCaregiverLinks.length > 0
                           ? getPendingCaregiverText(pendingCaregiverLinks.length)
@@ -474,26 +472,36 @@ export default function PatientHome({
                 <h2>Médico</h2>
               </div>
 
-              <div className="home-caregiver-sheet home-association-empty home-association-empty-compact">
+              <div className="home-caregiver-sheet">
                 <div className="home-caregiver-sheet-head">
                   <h3 className="home-caregiver-sheet-title">
-                    Ainda não tens médico ligado
+                    Sem médico associado
                   </h3>
                   <span className="home-connection-pill home-connection-pill-warning">
                     Sem ligação
                   </span>
                 </div>
 
-                <div className="home-association-empty-body">
-                  <p className="home-association-empty-text">
-                    Neste momento não existe nenhum médico associado a esta
-                    conta.
-                  </p>
-                  <p className="home-association-empty-note">
-                    Quando tiveres um médico ligado ao teu perfil, os dados dele
-                    vão aparecer aqui.
-                  </p>
-                </div>
+                <dl className="home-caregiver-sheet-list">
+                  <div className="home-caregiver-sheet-row">
+                    <dt className="home-caregiver-sheet-label">Estado</dt>
+                    <dd className="home-caregiver-sheet-value">
+                      Sem médico ligado
+                    </dd>
+                  </div>
+                  <div className="home-caregiver-sheet-row">
+                    <dt className="home-caregiver-sheet-label">Quando aparecer</dt>
+                    <dd className="home-caregiver-sheet-value">
+                      Quando houver uma ligação ativa
+                    </dd>
+                  </div>
+                  <div className="home-caregiver-sheet-row">
+                    <dt className="home-caregiver-sheet-label">Informação</dt>
+                    <dd className="home-caregiver-sheet-value">
+                      Os dados do médico vão aparecer aqui
+                    </dd>
+                  </div>
+                </dl>
               </div>
             </section>
           </div>
