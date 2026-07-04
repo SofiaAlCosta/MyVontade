@@ -371,7 +371,7 @@ export default function PatientDoctorPage({
 
       <main className="module-main">
         <section className="module-intro-card module-intro-card-minimal">
-          <h1 className="module-title">Médico</h1>
+          <h1 className="module-title">Ligações com Médicos</h1>
         </section>
 
         <section className="module-card">
