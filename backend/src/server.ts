@@ -290,21 +290,47 @@ function getMailTransport() {
   return mailTransport;
 }
 
-async function sendPasswordResetEmail(email: string, resetLink: string) {
-  const subject = "Recuperação de palavra-passe — MyVontade";
+type EmailLanguage = "pt" | "en";
+
+const passwordResetEmailContent: Record<
+  EmailLanguage,
+  { subject: string; intro: string; action: string; ignore: string }
+> = {
+  pt: {
+    subject: "Recuperação de palavra-passe — MyVontade",
+    intro: "Recebemos um pedido para repor a tua palavra-passe.",
+    action:
+      "Abre o link seguinte para definir uma nova (válido durante 1 hora):",
+    ignore: "Se não fizeste este pedido, ignora este email.",
+  },
+  en: {
+    subject: "Password reset — MyVontade",
+    intro: "We received a request to reset your password.",
+    action: "Open the link below to set a new one (valid for 1 hour):",
+    ignore: "If you didn't make this request, please ignore this email.",
+  },
+};
+
+async function sendPasswordResetEmail(
+  email: string,
+  resetLink: string,
+  language: EmailLanguage = "pt"
+) {
+  const content = passwordResetEmailContent[language];
+  const subject = content.subject;
   const text = [
-    "Recebemos um pedido para repor a tua palavra-passe.",
+    content.intro,
     "",
-    "Abre o link seguinte para definir uma nova (válido durante 1 hora):",
+    content.action,
     resetLink,
     "",
-    "Se não fizeste este pedido, ignora este email.",
+    content.ignore,
   ].join("\n");
   const html = `
-    <p>Recebemos um pedido para repor a tua palavra-passe.</p>
-    <p>Abre o link seguinte para definir uma nova (válido durante 1 hora):</p>
+    <p>${content.intro}</p>
+    <p>${content.action}</p>
     <p><a href="${resetLink}">${resetLink}</a></p>
-    <p>Se não fizeste este pedido, ignora este email.</p>
+    <p>${content.ignore}</p>
   `;
 
   const transport = getMailTransport();
@@ -312,7 +338,7 @@ async function sendPasswordResetEmail(email: string, resetLink: string) {
   if (!transport) {
     // Sem SMTP configurado (dev): não falha, apenas regista o link.
     console.log(
-      `[password-reset] SMTP não configurado. Link para ${email}: ${resetLink}`
+      `[password-reset] SMTP não configurado (idioma=${language}). Link para ${email}: ${resetLink}`
     );
     return;
   }
@@ -3780,6 +3806,7 @@ app.post("/api/auth/forgot-password", async (req, res) => {
   const email = String(req.body.email ?? "")
     .trim()
     .toLowerCase();
+  const language: EmailLanguage = req.body.language === "en" ? "en" : "pt";
 
   if (!email) {
     return res.status(400).json({ error: "missing_required_fields" });
@@ -3832,7 +3859,7 @@ app.post("/api/auth/forgot-password", async (req, res) => {
     const resetLink = `${appBaseUrl}/#reset?token=${token}`;
 
     try {
-      await sendPasswordResetEmail(email, resetLink);
+      await sendPasswordResetEmail(email, resetLink, language);
     } catch (error) {
       console.error("Não foi possível enviar o email de recuperação.", error);
     }

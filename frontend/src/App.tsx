@@ -15,6 +15,7 @@ import PatientHome from "./pages/patientHome";
 import ResetPassword from "./pages/resetPassword";
 import Signup from "./pages/signup";
 import type { SignupFormData, User } from "./types/user";
+import { useI18n } from "./i18n";
 import { AUTH_LOGOUT_EVENT } from "./utils/apiClient";
 import { clearAuthToken, getAuthToken, setAuthToken } from "./utils/authToken";
 import "./App.css";
@@ -89,6 +90,7 @@ function normalizeEmail(value: string) {
 }
 
 export default function App() {
+  const { language } = useI18n();
   const [screen, setScreen] = useState<Screen>(getInitialScreen);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [message, setMessage] = useState("");
@@ -332,7 +334,7 @@ export default function App() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email: normalizeEmail(email) }),
+        body: JSON.stringify({ email: normalizeEmail(email), language }),
       });
 
       // Resposta sempre genérica, para não revelar que emails têm conta.
