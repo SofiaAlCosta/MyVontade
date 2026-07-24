@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { useI18n } from "../i18n";
+import LanguageSwitcher from "./LanguageSwitcher";
 import "./patientNavigationMenu.css";
 
 type NavigationItem<Screen extends string> = {
@@ -20,6 +22,7 @@ export default function NavigationMenu<Screen extends string>({
   menuAriaLabel,
   onLogout,
 }: NavigationMenuProps<Screen>) {
+  const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -63,7 +66,7 @@ export default function NavigationMenu<Screen extends string>({
         type="button"
         aria-expanded={isOpen}
         aria-haspopup="menu"
-        aria-label="Abrir menu de navegação"
+        aria-label={t("Abrir menu de navegação")}
         onClick={() => setIsOpen((currentState) => !currentState)}
       >
         <span className="patient-nav-menu-icon" aria-hidden="true">
@@ -93,13 +96,17 @@ export default function NavigationMenu<Screen extends string>({
 
           <div className="patient-nav-menu-divider" />
 
+          <div className="patient-nav-menu-language">
+            <LanguageSwitcher />
+          </div>
+
           <button
             className="patient-nav-menu-item patient-nav-menu-item-logout"
             type="button"
             role="menuitem"
             onClick={() => handleAction(onLogout)}
           >
-            Terminar sessão
+            {t("Terminar sessão")}
           </button>
         </div>
       )}

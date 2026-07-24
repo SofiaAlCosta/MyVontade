@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import PatientNavigationMenu from "../components/PatientNavigationMenu";
+import { useI18n } from "../i18n";
 import type { User } from "../types/user";
 import "./patientModule.css";
 
@@ -41,15 +42,18 @@ function formatRole(role: string) {
   return role || "Desconhecido";
 }
 
-function describeAction(entry: AccessLogEntry) {
+function describeAction(
+  t: (text: string, params?: Record<string, string | number>) => string,
+  entry: AccessLogEntry
+) {
   if (entry.action === "view_patient_overview") {
-    return "Consultou os teus dados";
+    return t("Consultou os teus dados");
   }
 
   if (entry.action === "download_document") {
     return entry.resource
-      ? `Descarregou o documento "${entry.resource}"`
-      : "Descarregou um documento";
+      ? t('Descarregou o documento "{name}"', { name: entry.resource })
+      : t("Descarregou um documento");
   }
 
   return entry.action;
@@ -81,6 +85,7 @@ export default function AccessLogPage({
   onOpenAccount,
   onLogout,
 }: AccessLogPageProps) {
+  const { t } = useI18n();
   const [entries, setEntries] = useState<AccessLogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -113,6 +118,7 @@ export default function AccessLogPage({
       } catch {
         if (!ignore) {
           setMessage("Não foi possível ligar ao servidor.");
+          // (mensagem traduzida no render via t())
           setEntries([]);
         }
       } finally {
@@ -149,25 +155,25 @@ export default function AccessLogPage({
 
       <main className="module-main">
         <section className="module-intro-card">
-          <h1 className="module-title">Registo de acessos</h1>
+          <h1 className="module-title">{t("Registo de acessos")}</h1>
           <p className="module-description">
-            Quem consultou ou descarregou os teus dados, e quando.
+            {t("Quem consultou ou descarregou os teus dados, e quando.")}
           </p>
         </section>
 
         <div className="module-grid">
           <section className="module-card">
             {isLoading && (
-              <p className="module-inline-note">A carregar o registo...</p>
+              <p className="module-inline-note">{t("A carregar o registo...")}</p>
             )}
 
             {message && !isLoading && (
-              <p className="module-inline-note">{message}</p>
+              <p className="module-inline-note">{t(message)}</p>
             )}
 
             {!isLoading && !message && entries.length === 0 && (
               <p className="module-empty-text">
-                Ainda ninguém acedeu aos teus dados.
+                {t("Ainda ninguém acedeu aos teus dados.")}
               </p>
             )}
 
@@ -176,11 +182,12 @@ export default function AccessLogPage({
                 {entries.map((entry) => (
                   <li key={entry.id} className="module-item">
                     <div className="module-item-title">
-                      {describeAction(entry)}
+                      {describeAction(t, entry)}
                     </div>
                     <div className="module-item-text">
-                      {entry.actorName || "Utilizador removido"} ·{" "}
-                      {formatRole(entry.actorRole)} · {formatDateTime(entry.createdAt)}
+                      {entry.actorName || t("Utilizador removido")} ·{" "}
+                      {t(formatRole(entry.actorRole))} ·{" "}
+                      {formatDateTime(entry.createdAt)}
                     </div>
                   </li>
                 ))}

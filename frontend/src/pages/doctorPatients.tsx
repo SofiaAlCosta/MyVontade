@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import DoctorNavigationMenu from "../components/DoctorNavigationMenu";
+import { useI18n } from "../i18n";
 import type {
   DoctorPatientLink,
   DoctorPatientOverview,
@@ -32,6 +33,7 @@ export default function DoctorPatientsPage({
   onOpenAccount,
   onLogout,
 }: DoctorPatientsPageProps) {
+  const { t } = useI18n();
   const [links, setLinks] = useState<DoctorPatientLink[]>([]);
   const [message, setMessage] = useState("");
   const [messageTone, setMessageTone] = useState<"success" | "error">("error");
@@ -122,10 +124,10 @@ export default function DoctorPatientsPage({
   );
   const activeSectionTitle =
     activeSection === "decisions"
-      ? "Decisões"
+      ? t("Decisões")
       : activeSection === "documents"
-        ? "Documentos"
-        : "Informação";
+        ? t("Documentos")
+        : t("Informação");
 
   useEffect(() => {
     if (!selectedLink) {
@@ -268,7 +270,7 @@ export default function DoctorPatientsPage({
 
       <main className="home-main">
         <section className="home-intro-card home-intro-card-minimal">
-          <h1 className="home-title home-title-wide">Ligações com pacientes</h1>
+          <h1 className="home-title home-title-wide">{t("Ligações com pacientes")}</h1>
         </section>
 
         {message && (
@@ -277,7 +279,7 @@ export default function DoctorPatientsPage({
               className={`home-feedback-message home-feedback-message-${messageTone}`}
               role="status"
             >
-              {message}
+              {t(message)}
             </p>
           </section>
         )}
@@ -285,13 +287,17 @@ export default function DoctorPatientsPage({
         {!isLoading && activeLinks.length === 0 && (
           <section className="home-section home-panel-card">
             <div className="home-section-header">
-              <h2>Área dos pacientes</h2>
+              <h2>{t("Área dos pacientes")}</h2>
             </div>
 
             <p className="home-next-step-text">
               {pendingLinks.length > 0
-                ? "Ainda não tens pacientes ativos. Primeiro aceita os convites na página inicial do médico."
-                : "Quando tiveres um paciente com acesso ativo, ele vai aparecer aqui para consultares apenas as áreas que ele partilhou contigo."}
+                ? t(
+                    "Ainda não tens pacientes ativos. Primeiro aceita os convites na página inicial do médico."
+                  )
+                : t(
+                    "Quando tiveres um paciente com acesso ativo, ele vai aparecer aqui para consultares apenas as áreas que ele partilhou contigo."
+                  )}
             </p>
           </section>
         )}
@@ -302,7 +308,7 @@ export default function DoctorPatientsPage({
               <aside className="caregiver-detail-sidebar caregiver-detail-sidebar-profile">
                 <section className="caregiver-detail-card caregiver-patient-list-card">
                   <p className="home-next-step-text caregiver-patient-picker-note">
-                    Seleciona um paciente para abrir a informação partilhada.
+                    {t("Seleciona um paciente para abrir a informação partilhada.")}
                   </p>
 
                   <div className="caregiver-patient-list">
@@ -333,9 +339,9 @@ export default function DoctorPatientsPage({
                 {hasSelectedPatient && availableSections.length > 0 && (
                   <nav
                     className="caregiver-detail-card caregiver-detail-nav-card"
-                    aria-label="Navegação do paciente selecionado"
+                    aria-label={t("Navegação do paciente selecionado")}
                   >
-                    <p className="home-status-title">Menu do paciente</p>
+                    <p className="home-status-title">{t("Menu do paciente")}</p>
 
                     <div className="caregiver-detail-nav">
                       {selectedLink.permissions.canViewInformation && (
@@ -349,7 +355,7 @@ export default function DoctorPatientsPage({
                           aria-pressed={activeSection === "information"}
                           onClick={() => setActiveSection("information")}
                         >
-                          Informação
+                          {t("Informação")}
                         </button>
                       )}
 
@@ -364,7 +370,7 @@ export default function DoctorPatientsPage({
                           aria-pressed={activeSection === "decisions"}
                           onClick={() => setActiveSection("decisions")}
                         >
-                          Decisões
+                          {t("Decisões")}
                         </button>
                       )}
 
@@ -379,7 +385,7 @@ export default function DoctorPatientsPage({
                           aria-pressed={activeSection === "documents"}
                           onClick={() => setActiveSection("documents")}
                         >
-                          Documentos
+                          {t("Documentos")}
                         </button>
                       )}
                     </div>
@@ -397,13 +403,13 @@ export default function DoctorPatientsPage({
 
                   {isOverviewLoading && (
                     <p className="home-next-step-text">
-                      A carregar os dados partilhados do paciente selecionado...
+                      {t("A carregar os dados partilhados do paciente selecionado...")}
                     </p>
                   )}
 
                   {!isOverviewLoading && overviewMessage && (
                     <p className="home-feedback-message home-feedback-message-error">
-                      {overviewMessage}
+                      {t(overviewMessage)}
                     </p>
                   )}
 
@@ -414,28 +420,28 @@ export default function DoctorPatientsPage({
                       <section className="home-section home-panel-card caregiver-info-card">
                         <div className="caregiver-info-list">
                           <div className="caregiver-info-row">
-                            <span className="caregiver-info-label">Email</span>
+                            <span className="caregiver-info-label">{t("Email")}</span>
                             <strong className="caregiver-info-value">
                               {overview.patient.email}
                             </strong>
                           </div>
                           <div className="caregiver-info-row">
-                            <span className="caregiver-info-label">Telefone</span>
+                            <span className="caregiver-info-label">{t("Telefone")}</span>
                             <strong className="caregiver-info-value">
-                              {overview.patient.phoneNumber || "Por definir"}
+                              {overview.patient.phoneNumber || t("Por definir")}
                             </strong>
                           </div>
                           <div className="caregiver-info-row">
                             <span className="caregiver-info-label">
-                              Número de utente
+                              {t("Número de utente")}
                             </span>
                             <strong className="caregiver-info-value">
-                              {overview.patient.patientNumber || "Por definir"}
+                              {overview.patient.patientNumber || t("Por definir")}
                             </strong>
                           </div>
                           <div className="caregiver-info-row">
                             <span className="caregiver-info-label">
-                              Data de nascimento
+                              {t("Data de nascimento")}
                             </span>
                             <strong className="caregiver-info-value">
                               {formatDoctorDate(overview.patient.dateOfBirth)}
@@ -443,7 +449,7 @@ export default function DoctorPatientsPage({
                           </div>
                           <div className="caregiver-info-row">
                             <span className="caregiver-info-label">
-                              Ligação ativa desde
+                              {t("Ligação ativa desde")}
                             </span>
                             <strong className="caregiver-info-value">
                               {formatDoctorDateTime(selectedLink.respondedAt)}
@@ -464,10 +470,10 @@ export default function DoctorPatientsPage({
                             {overview.dashboard.decisionsSummary.map((decision) => (
                               <div key={decision.label} className="home-decision-row">
                                 <span className="home-decision-label">
-                                  {decision.label}
+                                  {t(decision.label)}
                                 </span>
                                 <strong className="home-decision-value">
-                                  {decision.value}
+                                  {t(decision.value)}
                                 </strong>
                               </div>
                             ))}
@@ -476,16 +482,16 @@ export default function DoctorPatientsPage({
 
                         <section className="home-section home-panel-card">
                           <div className="home-section-header">
-                            <h2>Notas</h2>
+                            <h2>{t("Notas")}</h2>
                           </div>
 
                           <div className="home-caregiver-notes home-caregiver-notes-no-border">
                             <p className="home-caregiver-notes-label">
-                              Notas registadas
+                              {t("Notas registadas")}
                             </p>
                             <p className="home-next-step-text">
                               {overview.decisions.notes ||
-                                "Não existem notas adicionais."}
+                                t("Não existem notas adicionais.")}
                             </p>
                           </div>
                         </section>
@@ -498,7 +504,7 @@ export default function DoctorPatientsPage({
                       <section className="home-section home-panel-card">
                         {overview.documents.length === 0 ? (
                           <p className="home-next-step-text">
-                            Este paciente ainda não carregou documentos nesta área.
+                            {t("Este paciente ainda não carregou documentos nesta área.")}
                           </p>
                         ) : (
                           <div className="home-connection-list">
@@ -510,19 +516,22 @@ export default function DoctorPatientsPage({
                                       {document.title}
                                     </p>
                                     <p className="home-connection-subtitle">
-                                      {document.documentType || "Documento geral"}
+                                      {document.documentType
+                                        ? t(document.documentType)
+                                        : t("Documento geral")}
                                     </p>
                                   </div>
                                   <span className="home-connection-pill">
-                                    Partilhado
+                                    {t("Partilhado")}
                                   </span>
                                 </div>
 
                                 <div className="home-connection-meta">
-                                  <p>Ficheiro: {document.fileName}</p>
+                                  <p>{t("Ficheiro:")} {document.fileName}</p>
                                   <p>
-                                    Carregado em{" "}
-                                    {formatDoctorDateTime(document.uploadedAt)}
+                                    {t("Carregado em {date}", {
+                                      date: formatDoctorDateTime(document.uploadedAt),
+                                    })}
                                   </p>
                                 </div>
 
@@ -539,8 +548,8 @@ export default function DoctorPatientsPage({
                                     }}
                                   >
                                     {downloadingDocumentId === document.id
-                                      ? "A descarregar..."
-                                      : "Descarregar documento"}
+                                      ? t("A descarregar...")
+                                      : t("Descarregar documento")}
                                   </button>
                                 </div>
                               </article>
@@ -558,11 +567,11 @@ export default function DoctorPatientsPage({
         {isLoading && (
           <section className="home-section home-panel-card">
             <div className="home-section-header">
-              <h2>A carregar</h2>
+              <h2>{t("A carregar")}</h2>
             </div>
 
             <p className="home-next-step-text">
-              Estamos a preparar os pacientes ligados a este perfil.
+              {t("Estamos a preparar os pacientes ligados a este perfil.")}
             </p>
           </section>
         )}

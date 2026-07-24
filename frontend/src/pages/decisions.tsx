@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import PatientNavigationMenu from "../components/PatientNavigationMenu";
+import { useI18n } from "../i18n";
 import type { PatientDecisions, User } from "../types/user";
 import "./patientModule.css";
 
@@ -80,14 +81,17 @@ function DecisionSelect({
   onClose,
   onChange,
 }: DecisionSelectProps) {
+  const { t } = useI18n();
   const selectedOption = options.find((option) => option.value === value) ?? null;
-  const displayValue = selectedOption?.label || "Seleciona uma opção";
+  const displayValue = selectedOption
+    ? t(selectedOption.label)
+    : t("Seleciona uma opção");
 
   return (
     <div className="module-field">
       <div className="module-field-label">
-        <span>{label}</span>
-        {error && <span className="module-field-error">{error}</span>}
+        <span>{t(label)}</span>
+        {error && <span className="module-field-error">{t(error)}</span>}
       </div>
 
       <div
@@ -137,7 +141,7 @@ function DecisionSelect({
         </button>
 
         {isOpen && (
-          <div className="module-dropdown-menu" role="listbox" aria-label={label}>
+          <div className="module-dropdown-menu" role="listbox" aria-label={t(label)}>
             <button
               type="button"
               role="option"
@@ -151,7 +155,7 @@ function DecisionSelect({
                 onClose();
               }}
             >
-              Seleciona uma opção
+              {t("Seleciona uma opção")}
             </button>
 
             {options.map((option) => (
@@ -169,7 +173,7 @@ function DecisionSelect({
                   onClose();
                 }}
               >
-                {option.label}
+                {t(option.label)}
               </button>
             ))}
           </div>
@@ -224,6 +228,7 @@ export default function DecisionsPage({
   onOpenAccount,
   onLogout,
 }: DecisionsPageProps) {
+  const { t } = useI18n();
   const [formData, setFormData] = useState<PatientDecisions>(initialFormData);
   const [savedFormData, setSavedFormData] =
     useState<PatientDecisions>(initialFormData);
@@ -420,12 +425,12 @@ export default function DecisionsPage({
 
       <main className="module-main">
         <section className="module-intro-card module-intro-card-minimal">
-          <h1 className="module-title">As Minhas Decisões</h1>
+          <h1 className="module-title">{t("As Minhas Decisões")}</h1>
         </section>
 
         <div className="module-grid">
           <section className="module-card">
-            <h2 className="module-card-title">Diretivas principais</h2>
+            <h2 className="module-card-title">{t("Diretivas principais")}</h2>
 
             <form
               className="module-form"
@@ -436,7 +441,7 @@ export default function DecisionsPage({
             >
               {isLoading && (
                 <p className="module-inline-note">
-                  A carregar as tuas decisões atuais...
+                  {t("A carregar as tuas decisões atuais...")}
                 </p>
               )}
 
@@ -482,11 +487,11 @@ export default function DecisionsPage({
 
                 <label className="module-field">
                   <div className="module-field-label">
-                    <span>Notas opcionais</span>
+                    <span>{t("Notas opcionais")}</span>
                   </div>
                   <textarea
                     rows={4}
-                    placeholder="Se quiseres, podes acrescentar uma nota."
+                    placeholder={t("Se quiseres, podes acrescentar uma nota.")}
                     value={formData.notes}
                     onChange={(event) => updateField("notes", event.target.value)}
                   />
@@ -497,7 +502,7 @@ export default function DecisionsPage({
                     className={`module-form-message module-form-message-${messageTone}`}
                     role="status"
                   >
-                    {message}
+                    {t(message)}
                   </p>
                 )}
 
@@ -509,7 +514,7 @@ export default function DecisionsPage({
                     type="submit"
                     disabled={!hasChanges || isLoading || isSaving}
                   >
-                    {isSaving ? "A guardar..." : "Guardar decisões"}
+                    {isSaving ? t("A guardar...") : t("Guardar decisões")}
                   </button>
                 </div>
               </fieldset>
@@ -517,36 +522,38 @@ export default function DecisionsPage({
           </section>
 
           <aside className="module-card">
-            <h2 className="module-card-title">Resumo atual</h2>
+            <h2 className="module-card-title">{t("Resumo atual")}</h2>
 
             <div className="module-meta-list">
               <div className="module-meta-row">
-                <p className="module-meta-label">Preenchidas</p>
-                <p className="module-meta-value">{filledDecisionCount} de 3</p>
+                <p className="module-meta-label">{t("Preenchidas")}</p>
+                <p className="module-meta-value">
+                  {t("{count} de 3", { count: filledDecisionCount })}
+                </p>
               </div>
             </div>
 
             <div className="module-item-list">
               <article className="module-item">
-                <p className="module-item-title">Reanimação</p>
+                <p className="module-item-title">{t("Reanimação")}</p>
                 <p className="module-item-text">
-                  {formData.resuscitationPreference || "Por definir"}
+                  {t(formData.resuscitationPreference || "Por definir")}
                 </p>
               </article>
 
               <article className="module-item">
-                <p className="module-item-title">Alimentação artificial</p>
+                <p className="module-item-title">{t("Alimentação artificial")}</p>
                 <p className="module-item-text">
-                  {formData.artificialFeedingPreference || "Por definir"}
+                  {t(formData.artificialFeedingPreference || "Por definir")}
                 </p>
               </article>
 
               <article className="module-item">
                 <p className="module-item-title">
-                  Quero sentir menos dor ou ficar mais alerta?
+                  {t("Quero sentir menos dor ou ficar mais alerta?")}
                 </p>
                 <p className="module-item-text">
-                  {formData.painManagementPreference || "Por definir"}
+                  {t(formData.painManagementPreference || "Por definir")}
                 </p>
               </article>
             </div>

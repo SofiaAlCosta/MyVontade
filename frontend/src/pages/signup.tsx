@@ -1,4 +1,6 @@
 import { useState } from "react";
+import LanguageSwitcher from "../components/LanguageSwitcher";
+import { useI18n } from "../i18n";
 import type { SignupFormData } from "../types/user";
 import {
   formatDoctorLicenseValue,
@@ -84,6 +86,7 @@ export default function Signup({
   onSignup,
   onGoToLogin,
 }: SignupProps) {
+  const { t } = useI18n();
   const [formData, setFormData] = useState<SignupFormData>(initialFormData);
   const [errors, setErrors] = useState<SignupErrors>({});
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
@@ -256,32 +259,38 @@ export default function Signup({
         <div>
           <p className="panel-brand">MyVontade</p>
           <div className="panel-intro">
-            <h1 className="panel-title">A tua vontade, com clareza e segurança.</h1>
+            <h1 className="panel-title">
+              {t("A tua vontade, com clareza e segurança.")}
+            </h1>
             <p className="panel-text">
-              Uma plataforma simples para consultar diretivas, decisões e
-              documentos de saúde.
+              {t(
+                "Uma plataforma simples para consultar diretivas, decisões e documentos de saúde."
+              )}
             </p>
           </div>
         </div>
 
         <div className="panel-notes">
-          <p>Na plataforma encontras</p>
+          <p>{t("Na plataforma encontras")}</p>
           <ul className="panel-list">
-            <li>Clareza para registar a tua vontade</li>
-            <li>Partilha segura com quem te acompanha</li>
-            <li>Informação acessível quando for precisa</li>
+            <li>{t("Clareza para registar a tua vontade")}</li>
+            <li>{t("Partilha segura com quem te acompanha")}</li>
+            <li>{t("Informação acessível quando for precisa")}</li>
           </ul>
         </div>
       </section>
 
       <section className="form-side">
         <div className={`form-card${isRoleSelected ? " form-card-expanded" : ""}`}>
-          <h2 className="form-title">Registo</h2>
+          <div className="form-card-top">
+            <LanguageSwitcher />
+          </div>
+          <h2 className="form-title">{t("Registo")}</h2>
 
           {!role ? (
             <>
               <p className="role-intro">
-                Escolhe o perfil com que te queres registar.
+                {t("Escolhe o perfil com que te queres registar.")}
               </p>
 
               <div className="role-list">
@@ -292,7 +301,7 @@ export default function Signup({
                     type="button"
                     onClick={() => resetRoleSpecificFields(option)}
                   >
-                    {getRoleLabel(option)}
+                    {t(getRoleLabel(option))}
                   </button>
                 ))}
               </div>
@@ -301,8 +310,10 @@ export default function Signup({
             <>
               <div className="selected-role">
                 <div>
-                  <span className="selected-role-label">Perfil selecionado</span>
-                  <strong>{getRoleLabel(role)}</strong>
+                  <span className="selected-role-label">
+                    {t("Perfil selecionado")}
+                  </span>
+                  <strong>{t(getRoleLabel(role))}</strong>
                 </div>
 
                 <button
@@ -313,19 +324,21 @@ export default function Signup({
                     setErrors({});
                   }}
                 >
-                  Alterar perfil
+                  {t("Alterar perfil")}
                 </button>
               </div>
 
               <div className="form-fields">
                 <label className="form-field">
                   <div className="field-label">
-                    <span>Nome</span>
-                    {errors.name && <span className="field-error">{errors.name}</span>}
+                    <span>{t("Nome")}</span>
+                    {errors.name && (
+                      <span className="field-error">{t(errors.name)}</span>
+                    )}
                   </div>
                   <input
                     type="text"
-                    placeholder="Nome completo"
+                    placeholder={t("Nome completo")}
                     required
                     aria-invalid={Boolean(errors.name)}
                     value={name}
@@ -336,14 +349,16 @@ export default function Signup({
 
                 <label className="form-field">
                   <div className="field-label">
-                    <span>Email</span>
-                    {errors.email && <span className="field-error">{errors.email}</span>}
+                    <span>{t("Email")}</span>
+                    {errors.email && (
+                      <span className="field-error">{t(errors.email)}</span>
+                    )}
                   </div>
                   <input
                     type="email"
                     inputMode="email"
                     autoComplete="email"
-                    placeholder="nome@gmail.com"
+                    placeholder={t("nome@gmail.com")}
                     required
                     aria-invalid={Boolean(errors.email)}
                     value={email}
@@ -355,14 +370,14 @@ export default function Signup({
 
                 <label className="form-field">
                   <div className="field-label">
-                    <span>Palavra-passe</span>
+                    <span>{t("Palavra-passe")}</span>
                     {errors.password && (
-                      <span className="field-error">{errors.password}</span>
+                      <span className="field-error">{t(errors.password)}</span>
                     )}
                   </div>
                   <input
                     type="password"
-                    placeholder="Cria uma palavra-passe"
+                    placeholder={t("Cria uma palavra-passe")}
                     autoComplete="new-password"
                     required
                     aria-invalid={Boolean(errors.password)}
@@ -375,7 +390,9 @@ export default function Signup({
 
                   {shouldShowPasswordRules && (
                     <div className="password-rules" aria-live="polite">
-                      <p className="password-rules-title">A palavra-passe deve ter:</p>
+                      <p className="password-rules-title">
+                        {t("A palavra-passe deve ter:")}
+                      </p>
                       <ul className="password-rules-list">
                         {passwordRules.map((rule) => (
                           <li
@@ -386,7 +403,7 @@ export default function Signup({
                                 : "password-rule"
                             }
                           >
-                            {rule.label}
+                            {t(rule.label)}
                           </li>
                         ))}
                       </ul>
@@ -396,13 +413,13 @@ export default function Signup({
 
                 {role === "patient" && (
                   <div className="detail-box">
-                    <p className="detail-title">Informação do paciente</p>
+                    <p className="detail-title">{t("Informação do paciente")}</p>
 
                     <label className="form-field">
                       <div className="field-label">
-                        <span>Número de utente</span>
+                        <span>{t("Número de utente")}</span>
                         {errors.patientNumber && (
-                          <span className="field-error">{errors.patientNumber}</span>
+                          <span className="field-error">{t(errors.patientNumber)}</span>
                         )}
                       </div>
                       <input
@@ -425,9 +442,9 @@ export default function Signup({
 
                     <label className="form-field">
                       <div className="field-label">
-                        <span>Data de nascimento</span>
+                        <span>{t("Data de nascimento")}</span>
                         {errors.dateOfBirth && (
-                          <span className="field-error">{errors.dateOfBirth}</span>
+                          <span className="field-error">{t(errors.dateOfBirth)}</span>
                         )}
                       </div>
                       <input
@@ -444,9 +461,9 @@ export default function Signup({
 
                     <label className="form-field">
                       <div className="field-label">
-                        <span>Telefone</span>
+                        <span>{t("Telefone")}</span>
                         {errors.phoneNumber && (
-                          <span className="field-error">{errors.phoneNumber}</span>
+                          <span className="field-error">{t(errors.phoneNumber)}</span>
                         )}
                       </div>
                       <input
@@ -471,14 +488,14 @@ export default function Signup({
 
                 {role === "doctor" && (
                   <div className="detail-box">
-                    <p className="detail-title">Informação profissional</p>
+                    <p className="detail-title">{t("Informação profissional")}</p>
 
                     <label className="form-field">
                       <div className="field-label">
-                        <span>Cédula profissional</span>
+                        <span>{t("Cédula profissional")}</span>
                         {errors.professionalLicense && (
                           <span className="field-error">
-                            {errors.professionalLicense}
+                            {t(errors.professionalLicense)}
                           </span>
                         )}
                       </div>
@@ -502,14 +519,14 @@ export default function Signup({
 
                     <label className="form-field">
                       <div className="field-label">
-                        <span>Especialidade</span>
+                        <span>{t("Especialidade")}</span>
                         {errors.specialty && (
-                          <span className="field-error">{errors.specialty}</span>
+                          <span className="field-error">{t(errors.specialty)}</span>
                         )}
                       </div>
                       <input
                         type="text"
-                        placeholder="Especialidade"
+                        placeholder={t("Especialidade")}
                         required
                         aria-invalid={Boolean(errors.specialty)}
                         value={specialty}
@@ -520,9 +537,9 @@ export default function Signup({
 
                     <label className="form-field">
                       <div className="field-label">
-                        <span>Telefone</span>
+                        <span>{t("Telefone")}</span>
                         {errors.phoneNumber && (
-                          <span className="field-error">{errors.phoneNumber}</span>
+                          <span className="field-error">{t(errors.phoneNumber)}</span>
                         )}
                       </div>
                       <input
@@ -547,20 +564,20 @@ export default function Signup({
 
                 {role === "caregiver" && (
                   <div className="detail-box">
-                    <p className="detail-title">Informação do cuidador</p>
+                    <p className="detail-title">{t("Informação do cuidador")}</p>
 
                     <label className="form-field">
                       <div className="field-label">
-                        <span>Relação com o utente</span>
+                        <span>{t("Relação com o utente")}</span>
                         {errors.relationshipToPatient && (
                           <span className="field-error">
-                            {errors.relationshipToPatient}
+                            {t(errors.relationshipToPatient)}
                           </span>
                         )}
                       </div>
                       <input
                         type="text"
-                        placeholder="Ex.: Familiar direto"
+                        placeholder={t("Ex.: Familiar direto")}
                         required
                         aria-invalid={Boolean(errors.relationshipToPatient)}
                         value={relationshipToPatient}
@@ -573,9 +590,9 @@ export default function Signup({
 
                     <label className="form-field">
                       <div className="field-label">
-                        <span>Telefone</span>
+                        <span>{t("Telefone")}</span>
                         {errors.phoneNumber && (
-                          <span className="field-error">{errors.phoneNumber}</span>
+                          <span className="field-error">{t(errors.phoneNumber)}</span>
                         )}
                       </div>
                       <input
@@ -599,7 +616,7 @@ export default function Signup({
                 )}
 
                 <button className="form-button" type="button" onClick={handleSignup}>
-                  Criar conta
+                  {t("Criar conta")}
                 </button>
               </div>
             </>
@@ -607,12 +624,12 @@ export default function Signup({
 
           {message && Object.keys(errors).length === 0 && (
             <p className="form-message" role="status">
-              {message}
+              {t(message)}
             </p>
           )}
 
           <p className="form-switch">
-            Já tens conta?{" "}
+            {t("Já tens conta?")}{" "}
             <a
               href="#"
               onClick={(event) => {
@@ -620,7 +637,7 @@ export default function Signup({
                 onGoToLogin();
               }}
             >
-              Entrar
+              {t("Entrar")}
             </a>
           </p>
         </div>

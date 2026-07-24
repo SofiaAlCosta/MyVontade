@@ -1,4 +1,6 @@
 import { useState, type FormEvent } from "react";
+import LanguageSwitcher from "../components/LanguageSwitcher";
+import { useI18n } from "../i18n";
 import "./login.css";
 
 type ForgotPasswordProps = {
@@ -12,6 +14,7 @@ export default function ForgotPassword({
   onForgotPassword,
   onGoToLogin,
 }: ForgotPasswordProps) {
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -32,10 +35,13 @@ export default function ForgotPassword({
         <div>
           <p className="panel-brand">MyVontade</p>
           <div className="panel-intro">
-            <h1 className="panel-title">Recuperar o acesso à tua conta.</h1>
+            <h1 className="panel-title">
+              {t("Recuperar o acesso à tua conta.")}
+            </h1>
             <p className="panel-text">
-              Indica o teu email e enviamos as instruções para definires uma
-              nova palavra-passe.
+              {t(
+                "Indica o teu email e enviamos as instruções para definires uma nova palavra-passe."
+              )}
             </p>
           </div>
         </div>
@@ -43,14 +49,17 @@ export default function ForgotPassword({
 
       <section className="form-side">
         <div className="form-card">
-          <h2 className="form-title">Recuperar palavra-passe</h2>
+          <div className="form-card-top">
+            <LanguageSwitcher />
+          </div>
+          <h2 className="form-title">{t("Recuperar palavra-passe")}</h2>
 
           <form className="form-fields" onSubmit={handleSubmit}>
             <label className="form-field">
-              <span>Email</span>
+              <span>{t("Email")}</span>
               <input
                 type="email"
-                placeholder="nome@exemplo.pt"
+                placeholder={t("nome@exemplo.pt")}
                 autoComplete="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
@@ -58,18 +67,18 @@ export default function ForgotPassword({
             </label>
 
             <button className="form-button" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "A enviar..." : "Enviar instruções"}
+              {isSubmitting ? t("A enviar...") : t("Enviar instruções")}
             </button>
           </form>
 
           {message && (
             <p className="form-message" role="status">
-              {message}
+              {t(message)}
             </p>
           )}
 
           <p className="form-switch">
-            Lembraste-te?{" "}
+            {t("Lembraste-te?")}{" "}
             <a
               href="#"
               onClick={(event) => {
@@ -77,7 +86,7 @@ export default function ForgotPassword({
                 onGoToLogin();
               }}
             >
-              Voltar a entrar
+              {t("Voltar a entrar")}
             </a>
           </p>
         </div>

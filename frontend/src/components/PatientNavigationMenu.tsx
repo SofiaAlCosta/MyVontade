@@ -1,3 +1,4 @@
+import { useI18n } from "../i18n";
 import NavigationMenu from "./NavigationMenu";
 
 type PatientScreen =
@@ -32,26 +33,28 @@ export default function PatientNavigationMenu({
   onOpenAccount,
   onLogout,
 }: PatientNavigationMenuProps) {
+  const { t } = useI18n();
+
   return (
     <NavigationMenu
       currentScreen={currentScreen}
-      menuAriaLabel="Navegação do paciente"
+      menuAriaLabel={t("Navegação do paciente")}
       items={[
-        { key: "home", label: "Início", onSelect: onOpenHome },
-        { key: "decisions", label: "Decisões", onSelect: onOpenDecisions },
-        { key: "caregiver", label: "Cuidador", onSelect: onOpenCaregiver },
-        { key: "doctor", label: "Médico", onSelect: onOpenDoctor },
-        { key: "documents", label: "Documentos", onSelect: onOpenDocuments },
+        { key: "home", label: t("Início"), onSelect: onOpenHome },
+        { key: "decisions", label: t("Decisões"), onSelect: onOpenDecisions },
+        { key: "caregiver", label: t("Cuidador"), onSelect: onOpenCaregiver },
+        { key: "doctor", label: t("Médico"), onSelect: onOpenDoctor },
+        { key: "documents", label: t("Documentos"), onSelect: onOpenDocuments },
         ...(onOpenAccessLog
           ? [
               {
                 key: "accessLog" as const,
-                label: "Acessos",
+                label: t("Acessos"),
                 onSelect: onOpenAccessLog,
               },
             ]
           : []),
-        { key: "account", label: "Conta", onSelect: onOpenAccount },
+        { key: "account", label: t("Conta"), onSelect: onOpenAccount },
       ]}
       onLogout={onLogout}
     />

@@ -1,3 +1,4 @@
+import { useI18n } from "../i18n";
 import NavigationMenu from "./NavigationMenu";
 
 type CaregiverScreen = "home" | "caregiver" | "account";
@@ -17,14 +18,16 @@ export default function CaregiverNavigationMenu({
   onOpenAccount,
   onLogout,
 }: CaregiverNavigationMenuProps) {
+  const { t } = useI18n();
+
   return (
     <NavigationMenu
       currentScreen={currentScreen}
-      menuAriaLabel="Navegação do cuidador"
+      menuAriaLabel={t("Navegação do cuidador")}
       items={[
-        { key: "home", label: "Início", onSelect: onOpenHome },
-        { key: "caregiver", label: "Pacientes", onSelect: onOpenCaregiver },
-        { key: "account", label: "Conta", onSelect: onOpenAccount },
+        { key: "home", label: t("Início"), onSelect: onOpenHome },
+        { key: "caregiver", label: t("Pacientes"), onSelect: onOpenCaregiver },
+        { key: "account", label: t("Conta"), onSelect: onOpenAccount },
       ]}
       onLogout={onLogout}
     />

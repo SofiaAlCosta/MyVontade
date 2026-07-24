@@ -1,4 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
+import LanguageSwitcher from "../components/LanguageSwitcher";
+import { useI18n } from "../i18n";
 import "./login.css";
 
 const LAST_LOGIN_EMAIL_KEY = "myvontade-last-login-email";
@@ -71,6 +73,7 @@ export default function Login({
   onGoToSignup,
   onGoToForgotPassword,
 }: LoginProps) {
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [savedEmails, setSavedEmails] = useState<string[]>([]);
@@ -128,35 +131,41 @@ export default function Login({
         <div>
           <p className="panel-brand">MyVontade</p>
           <div className="panel-intro">
-            <h1 className="panel-title">A tua vontade, com clareza e segurança.</h1>
+            <h1 className="panel-title">
+              {t("A tua vontade, com clareza e segurança.")}
+            </h1>
             <p className="panel-text">
-              Uma plataforma simples para consultar diretivas, decisões e
-              documentos de saúde.
+              {t(
+                "Uma plataforma simples para consultar diretivas, decisões e documentos de saúde."
+              )}
             </p>
           </div>
         </div>
 
         <div className="panel-notes">
-          <p>Na plataforma encontras</p>
+          <p>{t("Na plataforma encontras")}</p>
           <ul className="panel-list">
-            <li>Clareza para registar a tua vontade</li>
-            <li>Partilha segura com quem te acompanha</li>
-            <li>Informação acessível quando for precisa</li>
+            <li>{t("Clareza para registar a tua vontade")}</li>
+            <li>{t("Partilha segura com quem te acompanha")}</li>
+            <li>{t("Informação acessível quando for precisa")}</li>
           </ul>
         </div>
       </section>
 
       <section className="form-side">
         <div className="form-card">
-          <h2 className="form-title">Entrar</h2>
+          <div className="form-card-top">
+            <LanguageSwitcher />
+          </div>
+          <h2 className="form-title">{t("Entrar")}</h2>
 
           <form className="form-fields" onSubmit={handleSubmit}>
             <label className="form-field">
-              <span>Email</span>
+              <span>{t("Email")}</span>
               <div className="email-field-group">
                 <input
                   type="email"
-                  placeholder="nome@exemplo.pt"
+                  placeholder={t("nome@exemplo.pt")}
                   autoComplete="off"
                   value={email}
                   onChange={(e) => handleEmailChange(e.target.value)}
@@ -171,7 +180,7 @@ export default function Login({
                 />
 
                 {shouldShowEmailHistory && (
-                  <div className="email-history" role="listbox" aria-label="Histórico de emails">
+                  <div className="email-history" role="listbox" aria-label={t("Histórico de emails")}>
                     {filteredSavedEmails.map((savedEmail) => (
                       <button
                         key={savedEmail}
@@ -191,10 +200,10 @@ export default function Login({
             </label>
 
             <label className="form-field">
-              <span>Palavra-passe</span>
+              <span>{t("Palavra-passe")}</span>
               <input
                 type="password"
-                placeholder="Introduz a tua palavra-passe"
+                placeholder={t("Introduz a tua palavra-passe")}
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -202,7 +211,7 @@ export default function Login({
             </label>
 
             <button className="form-button" type="submit">
-              Entrar
+              {t("Entrar")}
             </button>
           </form>
 
@@ -214,18 +223,18 @@ export default function Login({
                 onGoToForgotPassword();
               }}
             >
-              Esqueceste-te da palavra-passe?
+              {t("Esqueceste-te da palavra-passe?")}
             </a>
           </p>
 
           {message && (
             <p className="form-message" role="status">
-              {message}
+              {t(message)}
             </p>
           )}
 
           <p className="form-switch">
-            Ainda não tens conta?{" "}
+            {t("Ainda não tens conta?")}{" "}
             <a
               href="#"
               onClick={(e) => {
@@ -233,7 +242,7 @@ export default function Login({
                 onGoToSignup();
               }}
             >
-              Regista-te
+              {t("Regista-te")}
             </a>
           </p>
         </div>

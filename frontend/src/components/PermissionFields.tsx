@@ -1,3 +1,4 @@
+import { useI18n } from "../i18n";
 import type { CaregiverSharePermissions } from "../types/user";
 
 type PermissionFieldKey = keyof CaregiverSharePermissions;
@@ -47,6 +48,7 @@ export default function PermissionFields({
   onToggle,
   variant = "invite",
 }: PermissionFieldsProps) {
+  const { t } = useI18n();
   const isInline = variant === "inline";
   const listClassName = isInline
     ? "module-check-list module-check-list-compact"
@@ -65,8 +67,8 @@ export default function PermissionFields({
             onChange={(event) => onToggle(option.key, event.target.checked)}
           />
           <div>
-            <strong>{option.label}</strong>
-            <span>{option.descriptions[variant]}</span>
+            <strong>{t(option.label)}</strong>
+            <span>{t(option.descriptions[variant])}</span>
           </div>
         </label>
       ))}

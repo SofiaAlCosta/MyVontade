@@ -1,4 +1,6 @@
 import { useState, type FormEvent } from "react";
+import LanguageSwitcher from "../components/LanguageSwitcher";
+import { useI18n } from "../i18n";
 import "./login.css";
 
 type ResetPasswordProps = {
@@ -14,6 +16,7 @@ export default function ResetPassword({
   onResetPassword,
   onGoToLogin,
 }: ResetPasswordProps) {
+  const { t } = useI18n();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [localError, setLocalError] = useState("");
@@ -26,12 +29,12 @@ export default function ResetPassword({
     setLocalError("");
 
     if (newPassword.length < 8) {
-      setLocalError("A palavra-passe deve ter pelo menos 8 caracteres.");
+      setLocalError(t("A palavra-passe deve ter pelo menos 8 caracteres."));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setLocalError("As palavras-passe não coincidem.");
+      setLocalError(t("As palavras-passe não coincidem."));
       return;
     }
 
@@ -50,10 +53,11 @@ export default function ResetPassword({
         <div>
           <p className="panel-brand">MyVontade</p>
           <div className="panel-intro">
-            <h1 className="panel-title">Definir uma nova palavra-passe.</h1>
+            <h1 className="panel-title">{t("Definir uma nova palavra-passe.")}</h1>
             <p className="panel-text">
-              Escolhe uma palavra-passe segura para voltares a aceder à tua
-              conta.
+              {t(
+                "Escolhe uma palavra-passe segura para voltares a aceder à tua conta."
+              )}
             </p>
           </div>
         </div>
@@ -61,19 +65,22 @@ export default function ResetPassword({
 
       <section className="form-side">
         <div className="form-card">
-          <h2 className="form-title">Nova palavra-passe</h2>
+          <div className="form-card-top">
+            <LanguageSwitcher />
+          </div>
+          <h2 className="form-title">{t("Nova palavra-passe")}</h2>
 
           {missingToken ? (
             <p className="form-message" role="status">
-              Ligação inválida. Pede uma nova recuperação de palavra-passe.
+              {t("Ligação inválida. Pede uma nova recuperação de palavra-passe.")}
             </p>
           ) : (
             <form className="form-fields" onSubmit={handleSubmit}>
               <label className="form-field">
-                <span>Nova palavra-passe</span>
+                <span>{t("Nova palavra-passe")}</span>
                 <input
                   type="password"
-                  placeholder="Pelo menos 8 caracteres"
+                  placeholder={t("Pelo menos 8 caracteres")}
                   autoComplete="new-password"
                   value={newPassword}
                   onChange={(event) => setNewPassword(event.target.value)}
@@ -81,10 +88,10 @@ export default function ResetPassword({
               </label>
 
               <label className="form-field">
-                <span>Confirmar palavra-passe</span>
+                <span>{t("Confirmar palavra-passe")}</span>
                 <input
                   type="password"
-                  placeholder="Repete a palavra-passe"
+                  placeholder={t("Repete a palavra-passe")}
                   autoComplete="new-password"
                   value={confirmPassword}
                   onChange={(event) => setConfirmPassword(event.target.value)}
@@ -96,7 +103,7 @@ export default function ResetPassword({
                 type="submit"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? "A guardar..." : "Guardar nova palavra-passe"}
+                {isSubmitting ? t("A guardar...") : t("Guardar nova palavra-passe")}
               </button>
             </form>
           )}
@@ -109,7 +116,7 @@ export default function ResetPassword({
 
           {message && (
             <p className="form-message" role="status">
-              {message}
+              {t(message)}
             </p>
           )}
 
@@ -121,7 +128,7 @@ export default function ResetPassword({
                 onGoToLogin();
               }}
             >
-              Voltar a entrar
+              {t("Voltar a entrar")}
             </a>
           </p>
         </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import PatientNavigationMenu from "../components/PatientNavigationMenu";
 import PermissionFields from "../components/PermissionFields";
+import { useI18n } from "../i18n";
 import type {
   CaregiverSharePermissions,
   PatientCaregiverLink,
@@ -67,6 +68,7 @@ export default function PatientCaregiverPage({
   onOpenAccount,
   onLogout,
 }: PatientCaregiverPageProps) {
+  const { t } = useI18n();
   const [formData, setFormData] = useState<InvitationFormData>(initialFormData);
   const [errors, setErrors] = useState<InvitationErrors>({});
   const [links, setLinks] = useState<PatientCaregiverLink[]>([]);
@@ -380,17 +382,17 @@ export default function PatientCaregiverPage({
 
       <main className="module-main">
         <section className="module-intro-card module-intro-card-minimal">
-          <h1 className="module-title">Ligações com cuidadores</h1>
+          <h1 className="module-title">{t("Ligações com cuidadores")}</h1>
         </section>
 
         <section className="module-card">
           <div className="module-section-heading">
             <div className="module-section-heading-group">
-              <h2 className="module-card-title">Ligações atuais</h2>
+              <h2 className="module-card-title">{t("Ligações atuais")}</h2>
               <span className="module-section-count-circle">{links.length}</span>
             </div>
             {isLoading && (
-              <p className="module-inline-note">A carregar ligações atuais...</p>
+              <p className="module-inline-note">{t("A carregar ligações atuais...")}</p>
             )}
           </div>
 
@@ -402,10 +404,11 @@ export default function PatientCaregiverPage({
             >
               <div className="module-action-panel-header">
                 <div className="module-action-panel-copy">
-                  <h3 className="module-subtitle">Convidar cuidador</h3>
+                  <h3 className="module-subtitle">{t("Convidar cuidador")}</h3>
                   <p className="module-inline-note">
-                    Envia um convite e define as áreas que o cuidador vai poder
-                    consultar.
+                    {t(
+                      "Envia um convite e define as áreas que o cuidador vai poder consultar."
+                    )}
                   </p>
                 </div>
 
@@ -419,7 +422,7 @@ export default function PatientCaregiverPage({
                         setErrors({});
                       }}
                     >
-                      Fechar formulário
+                      {t("Fechar formulário")}
                     </button>
                   ) : (
                     <button
@@ -430,7 +433,7 @@ export default function PatientCaregiverPage({
                         setMessage("");
                       }}
                     >
-                      Convidar cuidador
+                      {t("Convidar cuidador")}
                     </button>
                   )}
                 </div>
@@ -441,7 +444,7 @@ export default function PatientCaregiverPage({
                   className={`module-form-message module-form-message-${messageTone}`}
                   role="status"
                 >
-                  {message}
+                  {t(message)}
                 </p>
               )}
 
@@ -456,10 +459,10 @@ export default function PatientCaregiverPage({
                   <fieldset className="module-fieldset" disabled={isSaving}>
                     <label className="module-field">
                       <div className="module-field-label">
-                        <span>Email da conta do cuidador</span>
+                        <span>{t("Email da conta do cuidador")}</span>
                         {errors.caregiverEmail && (
                           <span className="module-field-error">
-                            {errors.caregiverEmail}
+                            {t(errors.caregiverEmail)}
                           </span>
                         )}
                       </div>
@@ -476,10 +479,10 @@ export default function PatientCaregiverPage({
 
                     <label className="module-field">
                       <div className="module-field-label">
-                        <span>Relação com o paciente</span>
+                        <span>{t("Relação com o paciente")}</span>
                         {errors.relationshipToPatient && (
                           <span className="module-field-error">
-                            {errors.relationshipToPatient}
+                            {t(errors.relationshipToPatient)}
                           </span>
                         )}
                       </div>
@@ -498,10 +501,10 @@ export default function PatientCaregiverPage({
 
                     <div className="module-field">
                       <div className="module-field-label">
-                        <span>Áreas que queres partilhar</span>
+                        <span>{t("Áreas que queres partilhar")}</span>
                         {errors.permissions && (
                           <span className="module-field-error">
-                            {errors.permissions}
+                            {t(errors.permissions)}
                           </span>
                         )}
                       </div>
@@ -513,13 +516,14 @@ export default function PatientCaregiverPage({
                     </div>
 
                     <p className="module-note">
-                      O cuidador precisa de ter uma conta criada com o perfil
-                      `cuidador` para poderes enviar o convite.
+                      {t(
+                        "O cuidador precisa de ter uma conta criada com o perfil `cuidador` para poderes enviar o convite."
+                      )}
                     </p>
 
                     <div className="module-card-actions">
                       <button className="module-card-button" type="submit">
-                        {isSaving ? "A enviar..." : "Enviar convite"}
+                        {isSaving ? t("A enviar...") : t("Enviar convite")}
                       </button>
                     </div>
                   </fieldset>
@@ -531,7 +535,7 @@ export default function PatientCaregiverPage({
               <section className="module-collection-panel">
                 <div className="module-collection-header">
                   <div className="module-section-heading-group">
-                    <h3 className="module-subtitle">Convites pendentes</h3>
+                    <h3 className="module-subtitle">{t("Convites pendentes")}</h3>
                     <span className="module-section-count-circle">
                       {pendingLinks.length}
                     </span>
@@ -552,17 +556,17 @@ export default function PatientCaregiverPage({
                         <div className="module-item-top">
                           <p className="module-item-title">{link.caregiverName}</p>
                           <span className="module-pill module-pill-warning">
-                            {getLinkStatusLabel(link.status)}
+                            {t(getLinkStatusLabel(link.status))}
                           </span>
                         </div>
                         <p className="module-item-text">{link.caregiverEmail}</p>
                         <p className="module-item-text">
-                          Relação: {link.relationshipToPatient}
+                          {t("Relação:")} {link.relationshipToPatient}
                         </p>
                         <div className="module-tag-list">
                           {permissionLabels.map((label) => (
                             <span key={label} className="module-tag">
-                              {label}
+                              {t(label)}
                             </span>
                           ))}
                         </div>
@@ -570,7 +574,7 @@ export default function PatientCaregiverPage({
                         {editingLinkId === link.id && (
                           <div className="module-inline-editor">
                             <p className="module-inline-editor-title">
-                              Alterar permissões
+                              {t("Alterar permissões")}
                             </p>
 
                             <PermissionFields
@@ -582,7 +586,9 @@ export default function PatientCaregiverPage({
                         )}
 
                         <p className="module-note">
-                          Convite enviado em {formatDateTime(link.createdAt)}.
+                          {t("Convite enviado em {date}.", {
+                            date: formatDateTime(link.createdAt),
+                          })}
                         </p>
 
                         <div className="module-inline-actions">
@@ -604,8 +610,8 @@ export default function PatientCaregiverPage({
                                 }}
                               >
                                 {actionLinkId === link.id
-                                  ? "A guardar..."
-                                  : "Guardar permissões"}
+                                  ? t("A guardar...")
+                                  : t("Guardar permissões")}
                               </button>
                               <button
                                 className="module-inline-button"
@@ -613,7 +619,7 @@ export default function PatientCaregiverPage({
                                 disabled={actionLinkId === link.id}
                                 onClick={handleCancelEditingPermissions}
                               >
-                                Cancelar
+                                {t("Cancelar")}
                               </button>
                             </>
                           ) : (
@@ -625,7 +631,7 @@ export default function PatientCaregiverPage({
                                 handleStartEditingPermissions(link);
                               }}
                             >
-                              Alterar permissões
+                              {t("Alterar permissões")}
                             </button>
                           )}
 
@@ -638,8 +644,8 @@ export default function PatientCaregiverPage({
                             }}
                           >
                             {actionLinkId === link.id
-                              ? "A cancelar..."
-                              : "Cancelar convite"}
+                              ? t("A cancelar...")
+                              : t("Cancelar convite")}
                           </button>
                         </div>
                       </article>
@@ -665,17 +671,17 @@ export default function PatientCaregiverPage({
                         <div className="module-item-top">
                           <p className="module-item-title">{link.caregiverName}</p>
                           <span className="module-pill">
-                            {getLinkStatusLabel(link.status)}
+                            {t(getLinkStatusLabel(link.status))}
                           </span>
                         </div>
                         <p className="module-item-text">{link.caregiverEmail}</p>
                         <p className="module-item-text">
-                          Relação: {link.relationshipToPatient}
+                          {t("Relação:")} {link.relationshipToPatient}
                         </p>
                         <div className="module-tag-list">
                           {permissionLabels.map((label) => (
                             <span key={label} className="module-tag">
-                              {label}
+                              {t(label)}
                             </span>
                           ))}
                         </div>
@@ -683,7 +689,7 @@ export default function PatientCaregiverPage({
                         {editingLinkId === link.id && (
                           <div className="module-inline-editor">
                             <p className="module-inline-editor-title">
-                              Alterar permissões
+                              {t("Alterar permissões")}
                             </p>
 
                             <PermissionFields
@@ -695,10 +701,13 @@ export default function PatientCaregiverPage({
                         )}
 
                         <p className="module-item-text">
-                          Telefone: {link.caregiverPhoneNumber || "Por definir"}
+                          {t("Telefone:")}{" "}
+                          {link.caregiverPhoneNumber || t("Por definir")}
                         </p>
                         <p className="module-note">
-                          Ligação aceite em {formatDateTime(link.respondedAt)}.
+                          {t("Ligação aceite em {date}.", {
+                            date: formatDateTime(link.respondedAt),
+                          })}
                         </p>
 
                         <div className="module-inline-actions">
@@ -720,8 +729,8 @@ export default function PatientCaregiverPage({
                                 }}
                               >
                                 {actionLinkId === link.id
-                                  ? "A guardar..."
-                                  : "Guardar permissões"}
+                                  ? t("A guardar...")
+                                  : t("Guardar permissões")}
                               </button>
                               <button
                                 className="module-inline-button"
@@ -729,7 +738,7 @@ export default function PatientCaregiverPage({
                                 disabled={actionLinkId === link.id}
                                 onClick={handleCancelEditingPermissions}
                               >
-                                Cancelar
+                                {t("Cancelar")}
                               </button>
                             </>
                           ) : (
@@ -741,7 +750,7 @@ export default function PatientCaregiverPage({
                                 handleStartEditingPermissions(link);
                               }}
                             >
-                              Alterar permissões
+                              {t("Alterar permissões")}
                             </button>
                           )}
 
@@ -754,8 +763,8 @@ export default function PatientCaregiverPage({
                             }}
                           >
                             {actionLinkId === link.id
-                              ? "A remover..."
-                              : "Remover ligação"}
+                              ? t("A remover...")
+                              : t("Remover ligação")}
                           </button>
                         </div>
                       </article>
@@ -768,10 +777,13 @@ export default function PatientCaregiverPage({
             {!isLoading && !hasAnyLinks && !isInviteFormOpen && (
               <section className="module-collection-panel module-collection-panel-empty">
                 <div className="module-collection-copy">
-                  <h3 className="module-subtitle">Ainda sem cuidadores ligados</h3>
+                  <h3 className="module-subtitle">
+                    {t("Ainda sem cuidadores ligados")}
+                  </h3>
                   <p className="module-inline-note">
-                    Quando um cuidador aceitar o teu convite, a ligação vai
-                    aparecer aqui.
+                    {t(
+                      "Quando um cuidador aceitar o teu convite, a ligação vai aparecer aqui."
+                    )}
                   </p>
                 </div>
               </section>

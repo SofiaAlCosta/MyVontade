@@ -3,6 +3,7 @@ import type { ChangeEvent } from "react";
 import CaregiverNavigationMenu from "../components/CaregiverNavigationMenu";
 import DoctorNavigationMenu from "../components/DoctorNavigationMenu";
 import PatientNavigationMenu from "../components/PatientNavigationMenu";
+import { useI18n } from "../i18n";
 import type { AccountProfile, SignupFormData, User } from "../types/user";
 import {
   formatDoctorLicenseValue,
@@ -224,6 +225,7 @@ export default function AccountPage({
   caregiverNavigation,
   doctorNavigation,
 }: AccountPageProps) {
+  const { t } = useI18n();
   const [formData, setFormData] = useState<AccountFormData>(() =>
     createInitialFormData(user)
   );
@@ -614,14 +616,14 @@ export default function AccountPage({
                 type="button"
                 onClick={onBack}
               >
-                Voltar ao início
+                {t("Voltar ao início")}
               </button>
               <button
                 className="account-logout-button"
                 type="button"
                 onClick={onLogout}
               >
-                Terminar sessão
+                {t("Terminar sessão")}
               </button>
             </>
           )}
@@ -640,7 +642,7 @@ export default function AccountPage({
                 <img
                   className="account-avatar-image"
                   src={profilePhoto}
-                  alt={`Foto de perfil de ${user.name}`}
+                  alt={t("Foto de perfil de {name}", { name: user.name })}
                 />
               ) : (
                 <span className="account-avatar-fallback">
@@ -648,7 +650,7 @@ export default function AccountPage({
                 </span>
               )}
 
-              <span className="account-avatar-overlay">Editar</span>
+              <span className="account-avatar-overlay">{t("Editar")}</span>
             </button>
 
             <input
@@ -661,11 +663,11 @@ export default function AccountPage({
 
             <div className="account-profile-copy">
               <h2 className="account-profile-name">{user.name}</h2>
-              <p className="account-profile-role">{getRoleLabel(user.role)}</p>
+              <p className="account-profile-role">{t(getRoleLabel(user.role))}</p>
             </div>
           </section>
 
-          <nav className="account-sidebar-nav" aria-label="Navegação da conta">
+          <nav className="account-sidebar-nav" aria-label={t("Navegação da conta")}>
             <button
               className={`account-nav-item ${
                 activeSection === "personal" ? "account-nav-item-active" : ""
@@ -673,7 +675,7 @@ export default function AccountPage({
               type="button"
               onClick={() => handleSectionChange("personal")}
             >
-              Informação pessoal
+              {t("Informação pessoal")}
             </button>
 
             <button
@@ -683,7 +685,7 @@ export default function AccountPage({
               type="button"
               onClick={() => handleSectionChange("profile")}
             >
-              Dados do perfil
+              {t("Dados do perfil")}
             </button>
             <button
               className={`account-nav-item account-nav-item-danger ${
@@ -692,7 +694,7 @@ export default function AccountPage({
               type="button"
               onClick={() => handleSectionChange("delete")}
             >
-              Eliminar conta
+              {t("Eliminar conta")}
             </button>
           </nav>
         </aside>
@@ -703,7 +705,7 @@ export default function AccountPage({
           }`}
         >
           <div className="account-main-heading">
-            <h1 className="account-main-title">A Minha Conta</h1>
+            <h1 className="account-main-title">{t("A Minha Conta")}</h1>
           </div>
 
           <form
@@ -716,25 +718,25 @@ export default function AccountPage({
             <fieldset className="account-fieldset" disabled={isBusy}>
               {isLoading && (
                 <p className="account-inline-note">
-                  A carregar os dados atuais da conta...
+                  {t("A carregar os dados atuais da conta...")}
                 </p>
               )}
 
               {activeSection === "personal" && (
                 <section className="account-card">
-                  <h2 className="account-card-title">Informação pessoal</h2>
+                  <h2 className="account-card-title">{t("Informação pessoal")}</h2>
 
                   <div className="account-fields-grid">
                     <label className="account-field">
                       <div className="account-field-label">
-                        <span>Nome completo</span>
+                        <span>{t("Nome completo")}</span>
                         {errors.name && (
-                          <span className="account-field-error">{errors.name}</span>
+                          <span className="account-field-error">{t(errors.name)}</span>
                         )}
                       </div>
                       <input
                         type="text"
-                        placeholder="Nome completo"
+                        placeholder={t("Nome completo")}
                         aria-invalid={Boolean(errors.name)}
                         className={errors.name ? "account-input-error" : ""}
                         value={formData.name}
@@ -744,14 +746,14 @@ export default function AccountPage({
 
                     <label className="account-field">
                       <div className="account-field-label">
-                        <span>Email</span>
+                        <span>{t("Email")}</span>
                         {errors.email && (
-                          <span className="account-field-error">{errors.email}</span>
+                          <span className="account-field-error">{t(errors.email)}</span>
                         )}
                       </div>
                       <input
                         type="email"
-                        placeholder="nome@exemplo.pt"
+                        placeholder={t("nome@exemplo.pt")}
                         aria-invalid={Boolean(errors.email)}
                         className={errors.email ? "account-input-error" : ""}
                         value={formData.email}
@@ -761,10 +763,10 @@ export default function AccountPage({
 
                     <label className="account-field">
                       <div className="account-field-label">
-                        <span>Telefone</span>
+                        <span>{t("Telefone")}</span>
                         {errors.phoneNumber && (
                           <span className="account-field-error">
-                            {errors.phoneNumber}
+                            {t(errors.phoneNumber)}
                           </span>
                         )}
                       </div>
@@ -790,17 +792,17 @@ export default function AccountPage({
 
               {activeSection === "profile" && (
                 <section className="account-card">
-                  <h2 className="account-card-title">Dados do perfil</h2>
+                  <h2 className="account-card-title">{t("Dados do perfil")}</h2>
 
                   <div className="account-fields-grid">
                     {user.role === "patient" && (
                       <>
                         <label className="account-field">
                           <div className="account-field-label">
-                            <span>Número de utente</span>
+                            <span>{t("Número de utente")}</span>
                             {errors.patientNumber && (
                               <span className="account-field-error">
-                                {errors.patientNumber}
+                                {t(errors.patientNumber)}
                               </span>
                             )}
                           </div>
@@ -825,10 +827,10 @@ export default function AccountPage({
 
                         <label className="account-field">
                           <div className="account-field-label">
-                            <span>Data de nascimento</span>
+                            <span>{t("Data de nascimento")}</span>
                             {errors.dateOfBirth && (
                               <span className="account-field-error">
-                                {errors.dateOfBirth}
+                                {t(errors.dateOfBirth)}
                               </span>
                             )}
                           </div>
@@ -849,10 +851,10 @@ export default function AccountPage({
                       <>
                         <label className="account-field">
                           <div className="account-field-label">
-                            <span>Cédula profissional</span>
+                            <span>{t("Cédula profissional")}</span>
                             {errors.professionalLicense && (
                               <span className="account-field-error">
-                                {errors.professionalLicense}
+                                {t(errors.professionalLicense)}
                               </span>
                             )}
                           </div>
@@ -877,16 +879,16 @@ export default function AccountPage({
 
                         <label className="account-field">
                           <div className="account-field-label">
-                            <span>Especialidade</span>
+                            <span>{t("Especialidade")}</span>
                             {errors.specialty && (
                               <span className="account-field-error">
-                                {errors.specialty}
+                                {t(errors.specialty)}
                               </span>
                             )}
                           </div>
                           <input
                             type="text"
-                            placeholder="Especialidade"
+                            placeholder={t("Especialidade")}
                             aria-invalid={Boolean(errors.specialty)}
                             className={errors.specialty ? "account-input-error" : ""}
                             value={formData.specialty}
@@ -901,16 +903,16 @@ export default function AccountPage({
                     {user.role === "caregiver" && (
                       <label className="account-field">
                         <div className="account-field-label">
-                          <span>Relação com o utente</span>
+                          <span>{t("Relação com o utente")}</span>
                           {errors.relationshipToPatient && (
                             <span className="account-field-error">
-                              {errors.relationshipToPatient}
+                              {t(errors.relationshipToPatient)}
                             </span>
                           )}
                         </div>
                         <input
                           type="text"
-                          placeholder="Ex.: Familiar direto"
+                          placeholder={t("Ex.: Familiar direto")}
                           aria-invalid={Boolean(errors.relationshipToPatient)}
                           className={
                             errors.relationshipToPatient ? "account-input-error" : ""
@@ -929,15 +931,17 @@ export default function AccountPage({
               {activeSection === "delete" && (
                 <div className="account-danger-zone" aria-live="polite">
                   <div className="account-danger-copy">
-                    <h2 className="account-danger-title">Eliminar conta</h2>
+                    <h2 className="account-danger-title">{t("Eliminar conta")}</h2>
                     <p className="account-danger-text">
-                      Esta ação remove a tua conta e os dados associados de
-                      forma permanente.
+                      {t(
+                        "Esta ação remove a tua conta e os dados associados de forma permanente."
+                      )}
                     </p>
                   </div>
                   <p className="account-danger-warning">
-                    Antes de apagar tudo, vamos pedir uma confirmação e a tua
-                    palavra-passe por segurança.
+                    {t(
+                      "Antes de apagar tudo, vamos pedir uma confirmação e a tua palavra-passe por segurança."
+                    )}
                   </p>
                   <button
                     className="account-danger-delete-button"
@@ -945,7 +949,7 @@ export default function AccountPage({
                     onClick={openDeleteModal}
                     disabled={isBusy}
                   >
-                    Eliminar conta
+                    {t("Eliminar conta")}
                   </button>
                 </div>
               )}
@@ -955,7 +959,7 @@ export default function AccountPage({
                   className={`account-form-message account-form-message-${messageTone}`}
                   role="status"
                 >
-                  {message}
+                  {t(message)}
                 </p>
               )}
 
@@ -968,7 +972,7 @@ export default function AccountPage({
                   type="submit"
                   disabled={isBusy || !hasChanges}
                 >
-                  {isSaving ? "A guardar..." : "Guardar alterações"}
+                  {isSaving ? t("A guardar...") : t("Guardar alterações")}
                 </button>
               </div>
               )}
@@ -993,11 +997,12 @@ export default function AccountPage({
                     id="delete-account-modal-title"
                     className="account-modal-title"
                   >
-                    Tens a certeza?
+                    {t("Tens a certeza?")}
                   </h2>
                   <p className="account-modal-text">
-                    Se continuares, a tua conta e todos os dados associados vão
-                    ser removidos de forma permanente.
+                    {t(
+                      "Se continuares, a tua conta e todos os dados associados vão ser removidos de forma permanente."
+                    )}
                   </p>
                 </div>
 
@@ -1007,14 +1012,14 @@ export default function AccountPage({
                     type="button"
                     onClick={handleDeleteModalClose}
                   >
-                    Cancelar
+                    {t("Cancelar")}
                   </button>
                   <button
                     className="account-modal-primary-button"
                     type="button"
                     onClick={handleDeleteModalContinue}
                   >
-                    Sim, continuar
+                    {t("Sim, continuar")}
                   </button>
                 </div>
               </>
@@ -1025,16 +1030,17 @@ export default function AccountPage({
                     id="delete-account-modal-title"
                     className="account-modal-title"
                   >
-                    Introduz a tua palavra-passe
+                    {t("Introduz a tua palavra-passe")}
                   </h2>
                   <p className="account-modal-text">
-                    Por segurança, precisamos da tua palavra-passe antes de
-                    apagar a conta.
+                    {t(
+                      "Por segurança, precisamos da tua palavra-passe antes de apagar a conta."
+                    )}
                   </p>
                 </div>
 
                 <label className="account-modal-field">
-                  <span className="account-modal-label">Palavra-passe</span>
+                  <span className="account-modal-label">{t("Palavra-passe")}</span>
                   <input
                     ref={deletePasswordInputRef}
                     className="account-modal-input"
@@ -1060,7 +1066,7 @@ export default function AccountPage({
 
                 {deleteMessage && (
                   <p className="account-danger-message" role="status">
-                    {deleteMessage}
+                    {t(deleteMessage)}
                   </p>
                 )}
 
@@ -1071,7 +1077,7 @@ export default function AccountPage({
                     onClick={handleDeleteModalBack}
                     disabled={isDeleting}
                   >
-                    Voltar
+                    {t("Voltar")}
                   </button>
                   <button
                     className="account-modal-danger-button"
@@ -1079,7 +1085,7 @@ export default function AccountPage({
                     onClick={() => void handleDeleteAccount()}
                     disabled={isDeleting}
                   >
-                    {isDeleting ? "A eliminar..." : "Eliminar conta"}
+                    {isDeleting ? t("A eliminar...") : t("Eliminar conta")}
                   </button>
                 </div>
               </>

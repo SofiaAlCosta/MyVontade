@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import PatientNavigationMenu from "../components/PatientNavigationMenu";
+import { useI18n } from "../i18n";
 import type {
   DashboardDecisionSummary,
   PatientCaregiverLink,
@@ -35,24 +36,29 @@ const fallbackDecisionsSummary: DashboardDecisionSummary[] = [
   },
 ];
 
-function getPendingCaregiverText(count: number) {
+type TranslateFn = (
+  text: string,
+  params?: Record<string, string | number>
+) => string;
+
+function getPendingCaregiverText(t: TranslateFn, count: number) {
   if (count <= 0) {
     return "";
   }
 
   return count === 1
-    ? "Existe 1 convite de cuidador pendente."
-    : `Existem ${count} convites de cuidador pendentes.`;
+    ? t("Existe 1 convite de cuidador pendente.")
+    : t("Existem {count} convites de cuidador pendentes.", { count });
 }
 
-function getPendingDoctorText(count: number) {
+function getPendingDoctorText(t: TranslateFn, count: number) {
   if (count <= 0) {
     return "";
   }
 
   return count === 1
-    ? "Existe 1 convite de médico pendente."
-    : `Existem ${count} convites de médico pendentes.`;
+    ? t("Existe 1 convite de médico pendente.")
+    : t("Existem {count} convites de médico pendentes.", { count });
 }
 
 export default function PatientHome({
@@ -67,6 +73,7 @@ export default function PatientHome({
   onOpenAccount,
   onLogout,
 }: HomeProps) {
+  const { t } = useI18n();
   const [decisionsSummary, setDecisionsSummary] = useState<
     DashboardDecisionSummary[]
   >(fallbackDecisionsSummary);
@@ -217,20 +224,22 @@ export default function PatientHome({
   if (completedDecisionCount < 3) {
     pendingChecklistItems.push(
       completedDecisionCount === 0
-        ? "Ainda não existem diretivas principais definidas."
-        : `Faltam ${3 - completedDecisionCount} diretivas por completar.`
+        ? t("Ainda não existem diretivas principais definidas.")
+        : t("Faltam {count} diretivas por completar.", {
+            count: 3 - completedDecisionCount,
+          })
     );
   }
 
   if (documents.length === 0) {
-    pendingChecklistItems.push("Ainda não tens documentos carregados.");
+    pendingChecklistItems.push(t("Ainda não tens documentos carregados."));
   }
 
   if (activeCaregiverLinks.length === 0) {
     pendingChecklistItems.push(
       pendingCaregiverLinks.length > 0
-        ? getPendingCaregiverText(pendingCaregiverLinks.length)
-        : "Ainda não existe cuidador associado."
+        ? getPendingCaregiverText(t, pendingCaregiverLinks.length)
+        : t("Ainda não existe cuidador associado.")
     );
   }
 
@@ -248,10 +257,10 @@ export default function PatientHome({
   const connectedDoctorCount = activeDoctorLinks.length;
   const latestDocumentText = latestDocument
     ? formatDateTime(latestDocument.uploadedAt)
-    : "Sem registo";
+    : t("Sem registo");
   const latestConnectionActivityText = latestConnectionActivity
     ? formatDateTime(latestConnectionActivity)
-    : "Sem registo";
+    : t("Sem registo");
 
   return (
     <div className="home-page">
@@ -277,12 +286,14 @@ export default function PatientHome({
 
       <main className="home-main">
         <section className="home-intro-card home-intro-card-minimal">
-          <h1 className="home-title">Olá, {getFirstName(user.name)}</h1>
+          <h1 className="home-title">
+            {t("Olá, {name}", { name: getFirstName(user.name) })}
+          </h1>
         </section>
 
         <section className="home-section home-panel-card home-priority-panel">
           <div className="home-section-header">
-            <h2>Decisões principais</h2>
+            <h2>{t("Decisões principais")}</h2>
           </div>
 
           <div className="home-decision-list home-decision-list-priority">
@@ -298,11 +309,11 @@ export default function PatientHome({
                       : "home-decision-row-pending"
                   }`}
                 >
-                  <span className="home-decision-label">{decision.label}</span>
+                  <span className="home-decision-label">{t(decision.label)}</span>
 
                   <div className="home-decision-meta">
                     <strong className="home-decision-value">
-                      {decision.value}
+                      {t(decision.value)}
                     </strong>
                     <span
                       className={`home-decision-state-pill ${
@@ -311,7 +322,7 @@ export default function PatientHome({
                           : "home-decision-state-pill-pending"
                       }`}
                     >
-                      {isDefined ? "Definida" : "Pendente"}
+                      {isDefined ? t("Definida") : t("Pendente")}
                     </span>
                   </div>
                 </div>
@@ -329,7 +340,7 @@ export default function PatientHome({
             {hasPendingChecklist && (
               <article className="home-overview-card home-overview-card-wide">
                 <div className="home-section-header">
-                  <h2>O que falta tratar</h2>
+                  <h2>{t("O que falta tratar")}</h2>
                 </div>
 
                 <div className="home-overview-checklist">
@@ -345,24 +356,24 @@ export default function PatientHome({
 
             <article className="home-overview-card home-overview-card-caregiver-access">
               <div className="home-section-header">
-                <h2>Quem tem acesso</h2>
+                <h2>{t("Quem tem acesso")}</h2>
               </div>
 
               <div className="home-overview-list">
                 <div className="home-overview-item">
-                  <p className="home-overview-label">Cuidadores ativos</p>
+                  <p className="home-overview-label">{t("Cuidadores ativos")}</p>
                   <strong className="home-overview-value">
                     {activeCaregiverLinks.length}
                   </strong>
                 </div>
                 <div className="home-overview-item">
-                  <p className="home-overview-label">Convites pendentes</p>
+                  <p className="home-overview-label">{t("Convites pendentes")}</p>
                   <strong className="home-overview-value">
                     {pendingCaregiverLinks.length}
                   </strong>
                 </div>
                 <div className="home-overview-item">
-                  <p className="home-overview-label">Médicos ligados</p>
+                  <p className="home-overview-label">{t("Médicos ligados")}</p>
                   <strong className="home-overview-value">
                     {connectedDoctorCount}
                   </strong>
@@ -372,24 +383,24 @@ export default function PatientHome({
 
             <article className="home-overview-card home-overview-card-activity">
               <div className="home-section-header">
-                <h2>Últimas atualizações</h2>
+                <h2>{t("Últimas atualizações")}</h2>
               </div>
 
               <div className="home-overview-list">
                 <div className="home-overview-item">
-                  <p className="home-overview-label">Diretivas definidas</p>
+                  <p className="home-overview-label">{t("Diretivas definidas")}</p>
                   <strong className="home-overview-value">
                     {completedDecisionCount}/3
                   </strong>
                 </div>
                 <div className="home-overview-item">
-                  <p className="home-overview-label">Último documento</p>
+                  <p className="home-overview-label">{t("Último documento")}</p>
                   <strong className="home-overview-value">
                     {latestDocumentText}
                   </strong>
                 </div>
                 <div className="home-overview-item">
-                  <p className="home-overview-label">Última ligação</p>
+                  <p className="home-overview-label">{t("Última ligação")}</p>
                   <strong className="home-overview-value">
                     {latestConnectionActivityText}
                   </strong>
@@ -401,7 +412,7 @@ export default function PatientHome({
           <div className="home-association-grid">
             <section className="home-section home-panel-card home-caregiver-panel">
               <div className="home-section-header">
-                <h2>Cuidador</h2>
+                <h2>{t("Cuidador")}</h2>
               </div>
 
               {primaryCaregiver ? (
@@ -410,20 +421,20 @@ export default function PatientHome({
                     <h3 className="home-caregiver-sheet-title">
                       {primaryCaregiver.caregiverName}
                     </h3>
-                    <span className="home-connection-pill">Ativo</span>
+                    <span className="home-connection-pill">{t("Ativo")}</span>
                   </div>
 
                   <dl className="home-caregiver-sheet-list">
                     <div className="home-caregiver-sheet-row">
-                      <dt className="home-caregiver-sheet-label">Contacto</dt>
+                      <dt className="home-caregiver-sheet-label">{t("Contacto")}</dt>
                       <dd className="home-caregiver-sheet-value">
                         <div className="home-caregiver-sheet-value-stack">
                           <span>
-                            {primaryCaregiver.caregiverEmail || "Email por definir"}
+                            {primaryCaregiver.caregiverEmail || t("Email por definir")}
                           </span>
                           <span>
                             {primaryCaregiver.caregiverPhoneNumber ||
-                              "Telefone por definir"}
+                              t("Telefone por definir")}
                           </span>
                         </div>
                       </dd>
@@ -431,7 +442,7 @@ export default function PatientHome({
 
                     <div className="home-caregiver-sheet-row">
                       <dt className="home-caregiver-sheet-label">
-                        Relação contigo
+                        {t("Relação contigo")}
                       </dt>
                       <dd className="home-caregiver-sheet-value">
                         {primaryCaregiver.relationshipToPatient}
@@ -440,12 +451,12 @@ export default function PatientHome({
 
                     <div className="home-caregiver-sheet-row">
                       <dt className="home-caregiver-sheet-label">
-                        Ligação ativa desde
+                        {t("Ligação ativa desde")}
                       </dt>
                       <dd className="home-caregiver-sheet-value">
                         {primaryCaregiver.respondedAt
                           ? formatDateTime(primaryCaregiver.respondedAt)
-                          : "Agora mesmo"}
+                          : t("Agora mesmo")}
                       </dd>
                     </div>
 
@@ -453,14 +464,17 @@ export default function PatientHome({
                       pendingCaregiverLinks.length > 0) && (
                       <div className="home-caregiver-sheet-row">
                         <dt className="home-caregiver-sheet-label">
-                          Mais informação
+                          {t("Mais informação")}
                         </dt>
                         <dd className="home-caregiver-sheet-value">
                           {extraActiveCaregiverCount > 0
                             ? extraActiveCaregiverCount === 1
-                              ? "Existe mais 1 cuidador ativo."
-                              : `Existem mais ${extraActiveCaregiverCount} cuidadores ativos.`
+                              ? t("Existe mais 1 cuidador ativo.")
+                              : t("Existem mais {count} cuidadores ativos.", {
+                                  count: extraActiveCaregiverCount,
+                                })
                             : getPendingCaregiverText(
+                                t,
                                 pendingCaregiverLinks.length
                               )}
                         </dd>
@@ -472,7 +486,7 @@ export default function PatientHome({
                 <div className="home-caregiver-sheet">
                   <div className="home-caregiver-sheet-head">
                     <h3 className="home-caregiver-sheet-title">
-                      Sem cuidador associado
+                      {t("Sem cuidador associado")}
                     </h3>
                     <span
                       className={`home-connection-pill ${
@@ -481,26 +495,33 @@ export default function PatientHome({
                           : ""
                       }`}
                     >
-                      {pendingCaregiverLinks.length > 0 ? "Pendente" : "Por ligar"}
+                      {pendingCaregiverLinks.length > 0
+                        ? t("Pendente")
+                        : t("Por ligar")}
                     </span>
                   </div>
 
                   <dl className="home-caregiver-sheet-list">
                     <div className="home-caregiver-sheet-row">
-                      <dt className="home-caregiver-sheet-label">Estado</dt>
+                      <dt className="home-caregiver-sheet-label">{t("Estado")}</dt>
                       <dd className="home-caregiver-sheet-value">
                         {pendingCaregiverLinks.length > 0
-                          ? "Convite pendente"
-                          : "Sem cuidador associado"}
+                          ? t("Convite pendente")
+                          : t("Sem cuidador associado")}
                       </dd>
                     </div>
 
                     <div className="home-caregiver-sheet-row">
-                      <dt className="home-caregiver-sheet-label">Próximo passo</dt>
+                      <dt className="home-caregiver-sheet-label">
+                        {t("Próximo passo")}
+                      </dt>
                       <dd className="home-caregiver-sheet-value">
                         {pendingCaregiverLinks.length > 0
-                          ? getPendingCaregiverText(pendingCaregiverLinks.length)
-                          : "Abrir a área do cuidador"}
+                          ? getPendingCaregiverText(
+                              t,
+                              pendingCaregiverLinks.length
+                            )
+                          : t("Abrir a área do cuidador")}
                       </dd>
                     </div>
                   </dl>
@@ -510,7 +531,7 @@ export default function PatientHome({
 
             <section className="home-section home-panel-card home-caregiver-panel home-association-panel-secondary">
               <div className="home-section-header">
-                <h2>Médico</h2>
+                <h2>{t("Médico")}</h2>
               </div>
 
               {primaryDoctor ? (
@@ -519,58 +540,60 @@ export default function PatientHome({
                     <h3 className="home-caregiver-sheet-title">
                       {primaryDoctor.doctorName}
                     </h3>
-                    <span className="home-connection-pill">Ativo</span>
+                    <span className="home-connection-pill">{t("Ativo")}</span>
                   </div>
 
                   <dl className="home-caregiver-sheet-list">
                     <div className="home-caregiver-sheet-row">
-                      <dt className="home-caregiver-sheet-label">Contacto</dt>
+                      <dt className="home-caregiver-sheet-label">{t("Contacto")}</dt>
                       <dd className="home-caregiver-sheet-value">
                         <div className="home-caregiver-sheet-value-stack">
-                          <span>{primaryDoctor.doctorEmail || "Email por definir"}</span>
+                          <span>{primaryDoctor.doctorEmail || t("Email por definir")}</span>
                           <span>
-                            {primaryDoctor.doctorPhoneNumber || "Telefone por definir"}
+                            {primaryDoctor.doctorPhoneNumber || t("Telefone por definir")}
                           </span>
                         </div>
                       </dd>
                     </div>
 
                     <div className="home-caregiver-sheet-row">
-                      <dt className="home-caregiver-sheet-label">Especialidade</dt>
+                      <dt className="home-caregiver-sheet-label">{t("Especialidade")}</dt>
                       <dd className="home-caregiver-sheet-value">
-                        {primaryDoctor.specialty || "Por definir"}
+                        {primaryDoctor.specialty || t("Por definir")}
                       </dd>
                     </div>
 
                     <div className="home-caregiver-sheet-row">
-                      <dt className="home-caregiver-sheet-label">Cédula</dt>
+                      <dt className="home-caregiver-sheet-label">{t("Cédula")}</dt>
                       <dd className="home-caregiver-sheet-value">
-                        {primaryDoctor.professionalLicense || "Por definir"}
+                        {primaryDoctor.professionalLicense || t("Por definir")}
                       </dd>
                     </div>
 
                     <div className="home-caregiver-sheet-row">
                       <dt className="home-caregiver-sheet-label">
-                        Ligação ativa desde
+                        {t("Ligação ativa desde")}
                       </dt>
                       <dd className="home-caregiver-sheet-value">
                         {primaryDoctor.respondedAt
                           ? formatDateTime(primaryDoctor.respondedAt)
-                          : "Agora mesmo"}
+                          : t("Agora mesmo")}
                       </dd>
                     </div>
 
                     {(extraActiveDoctorCount > 0 || pendingDoctorLinks.length > 0) && (
                       <div className="home-caregiver-sheet-row">
                         <dt className="home-caregiver-sheet-label">
-                          Mais informação
+                          {t("Mais informação")}
                         </dt>
                         <dd className="home-caregiver-sheet-value">
                           {extraActiveDoctorCount > 0
                             ? extraActiveDoctorCount === 1
-                              ? "Existe mais 1 médico ativo."
-                              : `Existem mais ${extraActiveDoctorCount} médicos ativos.`
-                            : getPendingDoctorText(pendingDoctorLinks.length)}
+                              ? t("Existe mais 1 médico ativo.")
+                              : t("Existem mais {count} médicos ativos.", {
+                                  count: extraActiveDoctorCount,
+                                })
+                            : getPendingDoctorText(t, pendingDoctorLinks.length)}
                         </dd>
                       </div>
                     )}
@@ -580,36 +603,40 @@ export default function PatientHome({
                 <div className="home-caregiver-sheet">
                   <div className="home-caregiver-sheet-head">
                     <h3 className="home-caregiver-sheet-title">
-                      Sem médico associado
+                      {t("Sem médico associado")}
                     </h3>
                     <span className="home-connection-pill home-connection-pill-warning">
-                      {pendingDoctorLinks.length > 0 ? "Pendente" : "Sem ligação"}
+                      {pendingDoctorLinks.length > 0
+                        ? t("Pendente")
+                        : t("Sem ligação")}
                     </span>
                   </div>
 
                   <dl className="home-caregiver-sheet-list">
                     <div className="home-caregiver-sheet-row">
-                      <dt className="home-caregiver-sheet-label">Estado</dt>
+                      <dt className="home-caregiver-sheet-label">{t("Estado")}</dt>
                       <dd className="home-caregiver-sheet-value">
                         {pendingDoctorLinks.length > 0
-                          ? "Convite pendente"
-                          : "Sem médico ligado"}
+                          ? t("Convite pendente")
+                          : t("Sem médico ligado")}
                       </dd>
                     </div>
                     <div className="home-caregiver-sheet-row">
-                      <dt className="home-caregiver-sheet-label">Próximo passo</dt>
+                      <dt className="home-caregiver-sheet-label">
+                        {t("Próximo passo")}
+                      </dt>
                       <dd className="home-caregiver-sheet-value">
                         {pendingDoctorLinks.length > 0
-                          ? getPendingDoctorText(pendingDoctorLinks.length)
-                          : "Abrir a área do médico"}
+                          ? getPendingDoctorText(t, pendingDoctorLinks.length)
+                          : t("Abrir a área do médico")}
                       </dd>
                     </div>
                     <div className="home-caregiver-sheet-row">
-                      <dt className="home-caregiver-sheet-label">Informação</dt>
+                      <dt className="home-caregiver-sheet-label">{t("Informação")}</dt>
                       <dd className="home-caregiver-sheet-value">
                         {pendingDoctorLinks.length > 0
-                          ? "O convite foi enviado e está à espera de aceitação."
-                          : "Os dados do médico vão aparecer aqui"}
+                          ? t("O convite foi enviado e está à espera de aceitação.")
+                          : t("Os dados do médico vão aparecer aqui")}
                       </dd>
                     </div>
                   </dl>

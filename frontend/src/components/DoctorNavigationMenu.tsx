@@ -1,3 +1,4 @@
+import { useI18n } from "../i18n";
 import NavigationMenu from "./NavigationMenu";
 
 type DoctorScreen = "home" | "patients" | "account";
@@ -17,14 +18,16 @@ export default function DoctorNavigationMenu({
   onOpenAccount,
   onLogout,
 }: DoctorNavigationMenuProps) {
+  const { t } = useI18n();
+
   return (
     <NavigationMenu
       currentScreen={currentScreen}
-      menuAriaLabel="Navegação do médico"
+      menuAriaLabel={t("Navegação do médico")}
       items={[
-        { key: "home", label: "Início", onSelect: onOpenHome },
-        { key: "patients", label: "Pacientes", onSelect: onOpenPatients },
-        { key: "account", label: "Conta", onSelect: onOpenAccount },
+        { key: "home", label: t("Início"), onSelect: onOpenHome },
+        { key: "patients", label: t("Pacientes"), onSelect: onOpenPatients },
+        { key: "account", label: t("Conta"), onSelect: onOpenAccount },
       ]}
       onLogout={onLogout}
     />

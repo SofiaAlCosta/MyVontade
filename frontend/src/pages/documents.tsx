@@ -5,6 +5,7 @@ import {
   type ChangeEvent,
 } from "react";
 import PatientNavigationMenu from "../components/PatientNavigationMenu";
+import { useI18n } from "../i18n";
 import type { PatientDocument, User } from "../types/user";
 import "./patientModule.css";
 
@@ -129,6 +130,7 @@ function DocumentTypeSelect({
   onClose: () => void;
   onChange: (value: string) => void;
 }) {
+  const { t } = useI18n();
   return (
     <div
       className="module-dropdown-shell"
@@ -164,7 +166,7 @@ function DocumentTypeSelect({
             value ? "" : "module-dropdown-button-text-placeholder"
           }`}
         >
-          {value || "Seleciona uma opção"}
+          {value ? t(value) : t("Seleciona uma opção")}
         </span>
         <span
           aria-hidden="true"
@@ -175,7 +177,7 @@ function DocumentTypeSelect({
       </button>
 
       {isOpen && (
-        <div className="module-dropdown-menu" role="listbox" aria-label="Tipo de documento">
+        <div className="module-dropdown-menu" role="listbox" aria-label={t("Tipo de documento")}>
           <button
             type="button"
             role="option"
@@ -189,7 +191,7 @@ function DocumentTypeSelect({
               onClose();
             }}
           >
-            Seleciona uma opção
+            {t("Seleciona uma opção")}
           </button>
 
           {options.map((option) => (
@@ -207,7 +209,7 @@ function DocumentTypeSelect({
                 onClose();
               }}
             >
-              {option}
+              {t(option)}
             </button>
           ))}
         </div>
@@ -228,6 +230,7 @@ export default function DocumentsPage({
   onOpenAccount,
   onLogout,
 }: DocumentsPageProps) {
+  const { t } = useI18n();
   const [formData, setFormData] = useState<DocumentFormData>(initialFormData);
   const [errors, setErrors] = useState<DocumentErrors>({});
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -505,12 +508,12 @@ export default function DocumentsPage({
 
       <main className="module-main">
         <section className="module-intro-card module-intro-card-minimal">
-          <h1 className="module-title">Documentos</h1>
+          <h1 className="module-title">{t("Documentos")}</h1>
         </section>
 
         <div className="module-grid">
           <section className="module-card">
-            <h2 className="module-card-title">Adicionar documento</h2>
+            <h2 className="module-card-title">{t("Adicionar documento")}</h2>
 
             <form
               className="module-form"
@@ -521,16 +524,16 @@ export default function DocumentsPage({
             >
               {isLoading && (
                 <p className="module-inline-note">
-                  A carregar os documentos atuais...
+                  {t("A carregar os documentos atuais...")}
                 </p>
               )}
 
               <fieldset className="module-fieldset" disabled={isLoading || isSaving}>
                 <label className="module-field">
                   <div className="module-field-label">
-                    <span>Título</span>
+                    <span>{t("Título")}</span>
                     {errors.title && (
-                      <span className="module-field-error">{errors.title}</span>
+                      <span className="module-field-error">{t(errors.title)}</span>
                     )}
                   </div>
                   <input
@@ -544,7 +547,7 @@ export default function DocumentsPage({
 
                 <label className="module-field">
                   <div className="module-field-label">
-                    <span>Tipo de documento</span>
+                    <span>{t("Tipo de documento")}</span>
                   </div>
                   <DocumentTypeSelect
                     value={formData.documentType}
@@ -558,9 +561,9 @@ export default function DocumentsPage({
 
                 <label className="module-field">
                   <div className="module-field-label">
-                    <span>Ficheiro</span>
+                    <span>{t("Ficheiro")}</span>
                     {errors.file && (
-                      <span className="module-field-error">{errors.file}</span>
+                      <span className="module-field-error">{t(errors.file)}</span>
                     )}
                   </div>
                   <div className={`module-file-picker ${errors.file ? "module-input-error" : ""}`}>
@@ -578,14 +581,16 @@ export default function DocumentsPage({
                       disabled={isLoading || isSaving}
                       onClick={() => fileInputRef.current?.click()}
                     >
-                      Escolher ficheiro
+                      {t("Escolher ficheiro")}
                     </button>
                     <span
                       className={`module-file-picker-name ${
                         selectedFile ? "" : "module-file-picker-name-placeholder"
                       }`}
                     >
-                      {selectedFile ? selectedFile.name : "Nenhum ficheiro selecionado"}
+                      {selectedFile
+                        ? selectedFile.name
+                        : t("Nenhum ficheiro selecionado")}
                     </span>
                   </div>
                 </label>
@@ -607,7 +612,7 @@ export default function DocumentsPage({
                     className={`module-form-message module-form-message-${messageTone}`}
                     role="status"
                   >
-                    {message}
+                    {t(message)}
                   </p>
                 )}
 
@@ -619,7 +624,7 @@ export default function DocumentsPage({
                     type="submit"
                     disabled={!canSubmit || isLoading || isSaving}
                   >
-                    {isSaving ? "A guardar..." : "Guardar documento"}
+                    {isSaving ? t("A guardar...") : t("Guardar documento")}
                   </button>
                 </div>
               </fieldset>
@@ -627,23 +632,23 @@ export default function DocumentsPage({
           </section>
 
           <aside className="module-card">
-            <h2 className="module-card-title">Resumo atual</h2>
+            <h2 className="module-card-title">{t("Resumo atual")}</h2>
 
             <div className="module-meta-list">
               <div className="module-meta-row">
-                <p className="module-meta-label">Total</p>
+                <p className="module-meta-label">{t("Total")}</p>
                 <p className="module-meta-value">
                   {documents.length === 1
-                    ? "1 documento"
-                    : `${documents.length} documentos`}
+                    ? t("1 documento")
+                    : t("{count} documentos", { count: documents.length })}
                 </p>
               </div>
               <div className="module-meta-row">
-                <p className="module-meta-label">Último registo</p>
+                <p className="module-meta-label">{t("Último registo")}</p>
                 <p className="module-meta-value">
                   {latestDocument
-                    ? formatDocumentDate(latestDocument.uploadedAt)
-                    : "Sem documentos"}
+                    ? t(formatDocumentDate(latestDocument.uploadedAt))
+                    : t("Sem documentos")}
                 </p>
               </div>
             </div>
@@ -652,10 +657,10 @@ export default function DocumentsPage({
               <>
                 {!loadMessage && (
                   <p className="module-empty-text">
-                    Ainda não existem documentos registados nesta área.
+                    {t("Ainda não existem documentos registados nesta área.")}
                   </p>
                 )}
-                {loadMessage && <p className="module-note">{loadMessage}</p>}
+                {loadMessage && <p className="module-note">{t(loadMessage)}</p>}
               </>
             ) : (
               <div className="module-item-list">
@@ -664,12 +669,16 @@ export default function DocumentsPage({
                     <div className="module-item-top">
                       <p className="module-item-title">{document.title}</p>
                       {document.documentType && (
-                        <span className="module-pill">{document.documentType}</span>
+                        <span className="module-pill">
+                          {t(document.documentType)}
+                        </span>
                       )}
                     </div>
                     <p className="module-item-text">{document.fileName}</p>
                     <p className="module-note">
-                      Registado a {formatDocumentDate(document.uploadedAt)}
+                      {t("Registado a {date}", {
+                        date: formatDocumentDate(document.uploadedAt),
+                      })}
                     </p>
                     <div className="module-inline-actions">
                       <button
@@ -683,8 +692,8 @@ export default function DocumentsPage({
                         }
                       >
                         {downloadingId === document.id
-                          ? "A descarregar..."
-                          : "Descarregar"}
+                          ? t("A descarregar...")
+                          : t("Descarregar")}
                       </button>
                       <button
                         className="module-inline-button module-inline-button-danger"
@@ -694,7 +703,7 @@ export default function DocumentsPage({
                           deletingId === document.id || downloadingId === document.id
                         }
                       >
-                        {deletingId === document.id ? "A remover..." : "Remover"}
+                        {deletingId === document.id ? t("A remover...") : t("Remover")}
                       </button>
                     </div>
                   </article>
