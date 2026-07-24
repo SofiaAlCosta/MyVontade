@@ -6,6 +6,7 @@ type PatientScreen =
   | "caregiver"
   | "doctor"
   | "documents"
+  | "accessLog"
   | "account";
 
 type PatientNavigationMenuProps = {
@@ -15,6 +16,7 @@ type PatientNavigationMenuProps = {
   onOpenCaregiver: () => void;
   onOpenDoctor: () => void;
   onOpenDocuments: () => void;
+  onOpenAccessLog?: () => void;
   onOpenAccount: () => void;
   onLogout: () => void;
 };
@@ -26,6 +28,7 @@ export default function PatientNavigationMenu({
   onOpenCaregiver,
   onOpenDoctor,
   onOpenDocuments,
+  onOpenAccessLog,
   onOpenAccount,
   onLogout,
 }: PatientNavigationMenuProps) {
@@ -39,6 +42,15 @@ export default function PatientNavigationMenu({
         { key: "caregiver", label: "Cuidador", onSelect: onOpenCaregiver },
         { key: "doctor", label: "Médico", onSelect: onOpenDoctor },
         { key: "documents", label: "Documentos", onSelect: onOpenDocuments },
+        ...(onOpenAccessLog
+          ? [
+              {
+                key: "accessLog" as const,
+                label: "Acessos",
+                onSelect: onOpenAccessLog,
+              },
+            ]
+          : []),
         { key: "account", label: "Conta", onSelect: onOpenAccount },
       ]}
       onLogout={onLogout}

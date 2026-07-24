@@ -16,6 +16,13 @@
 cd infrastructure
 ```
 
+1a. Crie o ficheiro `.env` (a partir de `.env.example`) e defina um `JWT_SECRET`.
+A API não arranca sem um segredo com pelo menos 32 caracteres. Para gerar um:
+
+```powershell
+node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+```
+
 2. Inicie a base de dados e a API:
 
 ```powershell

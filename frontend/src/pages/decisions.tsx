@@ -11,6 +11,7 @@ type DecisionsPageProps = {
   onOpenCaregiver: () => void;
   onOpenDoctor: () => void;
   onOpenDocuments: () => void;
+  onOpenAccessLog?: () => void;
   onOpenAccount: () => void;
   onLogout: () => void;
 };
@@ -219,6 +220,7 @@ export default function DecisionsPage({
   onOpenCaregiver,
   onOpenDoctor,
   onOpenDocuments,
+  onOpenAccessLog,
   onOpenAccount,
   onLogout,
 }: DecisionsPageProps) {
@@ -409,6 +411,7 @@ export default function DecisionsPage({
             onOpenCaregiver={onOpenCaregiver}
             onOpenDoctor={onOpenDoctor}
             onOpenDocuments={onOpenDocuments}
+            onOpenAccessLog={onOpenAccessLog}
             onOpenAccount={onOpenAccount}
             onLogout={onLogout}
           />

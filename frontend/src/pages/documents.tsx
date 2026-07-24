@@ -16,6 +16,7 @@ type DocumentsPageProps = {
   onOpenCaregiver: () => void;
   onOpenDoctor: () => void;
   onOpenDocuments: () => void;
+  onOpenAccessLog?: () => void;
   onOpenAccount: () => void;
   onLogout: () => void;
 };
@@ -223,6 +224,7 @@ export default function DocumentsPage({
   onOpenCaregiver,
   onOpenDoctor,
   onOpenDocuments,
+  onOpenAccessLog,
   onOpenAccount,
   onLogout,
 }: DocumentsPageProps) {
@@ -494,6 +496,7 @@ export default function DocumentsPage({
             onOpenCaregiver={onOpenCaregiver}
             onOpenDoctor={onOpenDoctor}
             onOpenDocuments={onOpenDocuments}
+            onOpenAccessLog={onOpenAccessLog}
             onOpenAccount={onOpenAccount}
             onLogout={onLogout}
           />

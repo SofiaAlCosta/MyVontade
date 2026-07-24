@@ -21,6 +21,7 @@ type HomeProps = {
   onOpenCaregiver: () => void;
   onOpenDoctor: () => void;
   onOpenDocuments: () => void;
+  onOpenAccessLog?: () => void;
   onOpenAccount: () => void;
   onLogout: () => void;
 };
@@ -62,6 +63,7 @@ export default function PatientHome({
   onOpenCaregiver,
   onOpenDoctor,
   onOpenDocuments,
+  onOpenAccessLog,
   onOpenAccount,
   onLogout,
 }: HomeProps) {
@@ -265,6 +267,7 @@ export default function PatientHome({
               onOpenCaregiver={onOpenCaregiver}
               onOpenDoctor={onOpenDoctor}
               onOpenDocuments={onOpenDocuments}
+              onOpenAccessLog={onOpenAccessLog}
               onOpenAccount={onOpenAccount}
               onLogout={onLogout}
             />

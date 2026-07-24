@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import AccessLogPage from "./pages/accessLog";
 import AccountPage from "./pages/account";
 import CaregiverHome from "./pages/caregiverHome";
 import CaregiverPatientsPage from "./pages/caregiverPatients";
@@ -12,6 +13,8 @@ import PatientDoctorPage from "./pages/patientDoctor";
 import PatientHome from "./pages/patientHome";
 import Signup from "./pages/signup";
 import type { SignupFormData, User } from "./types/user";
+import { AUTH_LOGOUT_EVENT } from "./utils/apiClient";
+import { clearAuthToken, getAuthToken, setAuthToken } from "./utils/authToken";
 import "./App.css";
 
 type Screen =
@@ -24,7 +27,8 @@ type Screen =
   | "doctor"
   | "caregiverPatients"
   | "doctorPatients"
-  | "documents";
+  | "documents"
+  | "accessLog";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 const LAST_LOGIN_EMAIL_KEY = "myvontade-last-login-email";
@@ -53,6 +57,67 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>(getInitialScreen);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [message, setMessage] = useState("");
+  const [restoringSession, setRestoringSession] = useState(true);
+
+  // Ao arrancar, se houver um token guardado, validá-lo e recuperar a sessão.
+  useEffect(() => {
+    const token = getAuthToken();
+
+    if (!token) {
+      setRestoringSession(false);
+      return;
+    }
+
+    let ignore = false;
+
+    (async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/auth/me`);
+
+        if (ignore) {
+          return;
+        }
+
+        if (response.ok) {
+          const data = (await response.json()) as { user?: User };
+
+          if (data.user) {
+            setCurrentUser(data.user);
+            setScreen("home");
+          } else {
+            clearAuthToken();
+          }
+        } else {
+          clearAuthToken();
+        }
+      } catch {
+        clearAuthToken();
+      } finally {
+        if (!ignore) {
+          setRestoringSession(false);
+        }
+      }
+    })();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  // Reagir a logout forçado (token expirado/inválido detetado pelo interceptor).
+  useEffect(() => {
+    const handleForcedLogout = () => {
+      setCurrentUser(null);
+      setScreen("login");
+      setMessage("A tua sessão expirou. Entra novamente.");
+    };
+
+    window.addEventListener(AUTH_LOGOUT_EVENT, handleForcedLogout);
+
+    return () => {
+      window.removeEventListener(AUTH_LOGOUT_EVENT, handleForcedLogout);
+    };
+  }, []);
 
   useEffect(() => {
     const nextHash = currentUser
@@ -91,6 +156,7 @@ export default function App() {
   const openCaregiverPatients = () => openScreen("caregiverPatients");
   const openDoctorPatients = () => openScreen("doctorPatients");
   const openDocuments = () => openScreen("documents");
+  const openAccessLog = () => openScreen("accessLog");
 
   const patientNavigation =
     currentUser?.role === "patient"
@@ -100,6 +166,7 @@ export default function App() {
           onOpenCaregiver: openCaregiver,
           onOpenDoctor: openDoctor,
           onOpenDocuments: openDocuments,
+          onOpenAccessLog: openAccessLog,
           onOpenAccount: openAccount,
         }
       : undefined;
@@ -123,6 +190,7 @@ export default function App() {
       : undefined;
 
   const handleLogout = () => {
+    clearAuthToken();
     setCurrentUser(null);
     openLogin();
   };
@@ -137,6 +205,7 @@ export default function App() {
       window.localStorage.removeItem(LAST_LOGIN_EMAIL_KEY);
     }
 
+    clearAuthToken();
     setCurrentUser(null);
     setMessage("Conta eliminada com sucesso.");
     setScreen("login");
@@ -193,14 +262,16 @@ export default function App() {
       const data = (await response.json()) as {
         error?: string;
         user?: User;
+        token?: string;
       };
 
-      if (!response.ok || !data.user) {
+      if (!response.ok || !data.user || !data.token) {
         setMessage(getErrorMessage(data.error));
         return;
       }
 
       window.localStorage.setItem(LAST_LOGIN_EMAIL_KEY, normalizedEmail);
+      setAuthToken(data.token);
       setCurrentUser(data.user);
       setScreen("home");
     } catch {
@@ -227,6 +298,14 @@ export default function App() {
       />
     );
   };
+
+  if (restoringSession) {
+    return (
+      <div className="app-shell">
+        <p style={{ padding: "2rem", textAlign: "center" }}>A carregar…</p>
+      </div>
+    );
+  }
 
   if (!currentUser) {
     return (
@@ -264,6 +343,7 @@ export default function App() {
             onOpenCaregiver={openCaregiver}
             onOpenDoctor={openDoctor}
             onOpenDocuments={openDocuments}
+            onOpenAccessLog={openAccessLog}
             onOpenAccount={openAccount}
             onLogout={handleLogout}
           />
@@ -278,6 +358,7 @@ export default function App() {
             onOpenCaregiver={openCaregiver}
             onOpenDoctor={openDoctor}
             onOpenDocuments={openDocuments}
+            onOpenAccessLog={openAccessLog}
             onOpenAccount={openAccount}
             onLogout={handleLogout}
           />
@@ -292,6 +373,7 @@ export default function App() {
             onOpenCaregiver={openCaregiver}
             onOpenDoctor={openDoctor}
             onOpenDocuments={openDocuments}
+            onOpenAccessLog={openAccessLog}
             onOpenAccount={openAccount}
             onLogout={handleLogout}
           />
@@ -306,6 +388,22 @@ export default function App() {
             onOpenCaregiver={openCaregiver}
             onOpenDoctor={openDoctor}
             onOpenDocuments={openDocuments}
+            onOpenAccessLog={openAccessLog}
+            onOpenAccount={openAccount}
+            onLogout={handleLogout}
+          />
+        );
+      case "accessLog":
+        return (
+          <AccessLogPage
+            apiUrl={API_URL}
+            user={currentUser}
+            onOpenHome={openHome}
+            onOpenDecisions={openDecisions}
+            onOpenCaregiver={openCaregiver}
+            onOpenDoctor={openDoctor}
+            onOpenDocuments={openDocuments}
+            onOpenAccessLog={openAccessLog}
             onOpenAccount={openAccount}
             onLogout={handleLogout}
           />
@@ -320,6 +418,7 @@ export default function App() {
             onOpenCaregiver={openCaregiver}
             onOpenDoctor={openDoctor}
             onOpenDocuments={openDocuments}
+            onOpenAccessLog={openAccessLog}
             onOpenAccount={openAccount}
             onLogout={handleLogout}
           />

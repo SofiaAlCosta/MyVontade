@@ -15,7 +15,7 @@
   gap: 16px;
   width: 100vw;
   margin-left: calc(50% - 50vw);
-  padding: 22px 32px;
+  padding: 22px max(24px, calc(50vw - 536px));
   border: none;
   border-bottom: 1px solid rgba(47, 111, 109, 0.14);
   border-radius: 0;

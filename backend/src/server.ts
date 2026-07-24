@@ -103,6 +103,190 @@ function comparePassword(password: string, storedPassword: string) {
   return crypto.timingSafeEqual(hash, storedHashBuffer);
 }
 
+// --- Autenticação por token (JWT HS256, sem dependências externas) ---
+
+const jwtSecret = process.env.JWT_SECRET ?? "";
+const jwtExpirySeconds = 60 * 60 * 8; // 8 horas
+
+type AuthTokenPayload = {
+  sub: number;
+  role: string;
+};
+
+function signAuthToken(payload: AuthTokenPayload) {
+  const header = { alg: "HS256", typ: "JWT" };
+  const now = Math.floor(Date.now() / 1000);
+  const body = { ...payload, iat: now, exp: now + jwtExpirySeconds };
+
+  const encodedHeader = Buffer.from(JSON.stringify(header)).toString(
+    "base64url"
+  );
+  const encodedBody = Buffer.from(JSON.stringify(body)).toString("base64url");
+  const data = `${encodedHeader}.${encodedBody}`;
+  const signature = crypto
+    .createHmac("sha256", jwtSecret)
+    .update(data)
+    .digest("base64url");
+
+  return `${data}.${signature}`;
+}
+
+function verifyAuthToken(token: string): AuthTokenPayload | null {
+  const parts = token.split(".");
+
+  if (parts.length !== 3) {
+    return null;
+  }
+
+  const [encodedHeader, encodedBody, signature] = parts;
+  const data = `${encodedHeader}.${encodedBody}`;
+  const expectedSignature = crypto
+    .createHmac("sha256", jwtSecret)
+    .update(data)
+    .digest("base64url");
+
+  const signatureBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expectedSignature);
+
+  if (
+    signatureBuffer.length !== expectedBuffer.length ||
+    !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)
+  ) {
+    return null;
+  }
+
+  try {
+    const decoded = JSON.parse(
+      Buffer.from(encodedBody, "base64url").toString("utf8")
+    ) as { sub?: unknown; role?: unknown; exp?: unknown };
+
+    if (typeof decoded.sub !== "number" || typeof decoded.exp !== "number") {
+      return null;
+    }
+
+    if (decoded.exp < Math.floor(Date.now() / 1000)) {
+      return null;
+    }
+
+    return { sub: decoded.sub, role: String(decoded.role ?? "") };
+  } catch {
+    return null;
+  }
+}
+
+type AuthedRequest = express.Request & {
+  authUserId?: number;
+  authRole?: string;
+};
+
+function requireAuth(
+  req: AuthedRequest,
+  res: express.Response,
+  next: express.NextFunction
+) {
+  const header = String(req.headers.authorization ?? "");
+  const [scheme, token] = header.split(" ");
+
+  if (scheme !== "Bearer" || !token) {
+    return res.status(401).json({ error: "missing_token" });
+  }
+
+  const payload = verifyAuthToken(token);
+
+  if (!payload) {
+    return res.status(401).json({ error: "invalid_token" });
+  }
+
+  req.authUserId = payload.sub;
+  req.authRole = payload.role;
+
+  return next();
+}
+
+function requireSelf(
+  req: AuthedRequest,
+  res: express.Response,
+  next: express.NextFunction
+) {
+  const userId = Number.parseInt(String(req.params.id ?? ""), 10);
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ error: "invalid_user_id" });
+  }
+
+  if (req.authUserId !== userId) {
+    return res.status(403).json({ error: "forbidden" });
+  }
+
+  return next();
+}
+
+// Regista um acesso aos dados de um paciente. Nunca lança: se o registo
+// falhar, escreve no log do servidor mas não interrompe o pedido.
+async function logAccess(entry: {
+  patientUserId: number;
+  actorUserId: number;
+  actorRole: string;
+  action: string;
+  resource?: string | null;
+}) {
+  try {
+    await pool.query(
+      `
+        INSERT INTO access_log (
+          patient_user_id,
+          actor_user_id,
+          actor_role,
+          action,
+          resource
+        )
+        VALUES ($1, $2, $3, $4, $5)
+      `,
+      [
+        entry.patientUserId,
+        entry.actorUserId,
+        entry.actorRole,
+        entry.action,
+        entry.resource ?? null,
+      ]
+    );
+  } catch (error) {
+    console.error("Não foi possível registar o acesso.", error);
+  }
+}
+
+// Limitador simples de tentativas de login (em memória, por IP+email).
+const loginAttempts = new Map<string, { count: number; firstAt: number }>();
+const loginWindowMs = 15 * 60 * 1000; // 15 minutos
+const loginMaxAttempts = 10;
+
+function isLoginRateLimited(key: string) {
+  const now = Date.now();
+  const entry = loginAttempts.get(key);
+
+  if (!entry || now - entry.firstAt > loginWindowMs) {
+    return false;
+  }
+
+  return entry.count >= loginMaxAttempts;
+}
+
+function registerLoginFailure(key: string) {
+  const now = Date.now();
+  const entry = loginAttempts.get(key);
+
+  if (!entry || now - entry.firstAt > loginWindowMs) {
+    loginAttempts.set(key, { count: 1, firstAt: now });
+    return;
+  }
+
+  entry.count += 1;
+}
+
+function clearLoginFailures(key: string) {
+  loginAttempts.delete(key);
+}
+
 type AccountRow = {
   id: number;
   name: string;
@@ -249,6 +433,103 @@ type ActiveDoctorLinkAccessRow = {
   can_view_decisions: boolean;
   can_view_documents: boolean;
 };
+
+// Cria as tabelas base (utilizadores e perfis) caso não existam. Tem de
+// correr antes das tabelas de links, que referenciam users(id).
+async function ensureBaseTables() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      password TEXT NOT NULL,
+      role TEXT NOT NULL
+        CHECK (role IN ('patient', 'doctor', 'caregiver')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS patients (
+      user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      patient_number TEXT,
+      date_of_birth DATE,
+      phone_number TEXT
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS doctors (
+      user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      professional_license TEXT,
+      specialty TEXT,
+      phone_number TEXT
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS caregivers (
+      user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      relationship_to_patient TEXT,
+      phone_number TEXT
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS patient_decisions (
+      patient_user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      resuscitation_preference TEXT,
+      artificial_feeding_preference TEXT,
+      pain_management_preference TEXT,
+      notes TEXT,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS healthcare_proxies (
+      patient_user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT,
+      relationship_to_patient TEXT,
+      phone_number TEXT,
+      email TEXT
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS patient_documents (
+      id SERIAL PRIMARY KEY,
+      patient_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      document_type TEXT,
+      file_name TEXT NOT NULL,
+      file_path TEXT NOT NULL,
+      uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS patient_documents_patient_idx
+    ON patient_documents (patient_user_id)
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS access_log (
+      id SERIAL PRIMARY KEY,
+      patient_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      actor_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      actor_role TEXT,
+      action TEXT NOT NULL,
+      resource TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS access_log_patient_idx
+    ON access_log (patient_user_id, created_at DESC)
+  `);
+}
 
 async function ensureCaregiverLinksTable() {
   await pool.query(`
@@ -1189,6 +1470,11 @@ app.get("/api/db-check", async (req, res) => {
   res.json({ db: result.rows[0].ok });
 });
 
+// Todas as rotas /api/users/:id exigem token válido e que :id seja o
+// próprio utilizador autenticado. O acesso cruzado (cuidador/médico a um
+// paciente) continua a ser validado pelos links dentro de cada endpoint.
+app.use("/api/users/:id", requireAuth, requireSelf);
+
 app.get("/api/users/:id/dashboard", async (req, res) => {
   const userId = Number.parseInt(String(req.params.id ?? ""), 10);
 
@@ -1203,6 +1489,53 @@ app.get("/api/users/:id/dashboard", async (req, res) => {
   }
 
   return res.json(dashboard);
+});
+
+// Registo de acessos do paciente: quem (cuidador/médico) viu ou descarregou
+// os seus dados, e quando. Protegido por requireSelf, portanto só o próprio
+// paciente consegue ver o seu registo.
+app.get("/api/users/:id/access-log", async (req, res) => {
+  const userId = Number.parseInt(String(req.params.id ?? ""), 10);
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ error: "invalid_user_id" });
+  }
+
+  const result = await pool.query<{
+    id: number;
+    action: string;
+    resource: string | null;
+    actor_role: string | null;
+    actor_name: string | null;
+    created_at: string;
+  }>(
+    `
+      SELECT
+        access_log.id,
+        access_log.action,
+        access_log.resource,
+        access_log.actor_role,
+        actor.name AS actor_name,
+        access_log.created_at::text AS created_at
+      FROM access_log
+      LEFT JOIN users AS actor ON actor.id = access_log.actor_user_id
+      WHERE access_log.patient_user_id = $1
+      ORDER BY access_log.created_at DESC, access_log.id DESC
+      LIMIT 200
+    `,
+    [userId]
+  );
+
+  return res.json({
+    entries: result.rows.map((row) => ({
+      id: row.id,
+      action: row.action,
+      resource: row.resource ?? "",
+      actorName: row.actor_name ?? "",
+      actorRole: row.actor_role ?? "",
+      createdAt: row.created_at,
+    })),
+  });
 });
 
 app.get("/api/users/:id/decisions", async (req, res) => {
@@ -1962,6 +2295,13 @@ app.get("/api/users/:id/patient-links/:patientId/overview", async (req, res) => 
     return res.status(404).json({ error: "user_not_found" });
   }
 
+  await logAccess({
+    patientUserId: patientId,
+    actorUserId: userId,
+    actorRole: role,
+    action: "view_patient_overview",
+  });
+
   return res.json({
     permissions,
     patient:
@@ -2133,6 +2473,13 @@ app.get("/api/users/:id/doctor-patient-links/:patientId/overview", async (req, r
   ) {
     return res.status(404).json({ error: "user_not_found" });
   }
+
+  await logAccess({
+    patientUserId: patientId,
+    actorUserId: userId,
+    actorRole: role,
+    action: "view_patient_overview",
+  });
 
   return res.json({
     permissions,
@@ -2314,6 +2661,16 @@ app.get("/api/users/:id/documents/:documentId/file", async (req, res) => {
     await fs.access(resolvedPath);
   } catch {
     return res.status(404).json({ error: "file_not_found" });
+  }
+
+  if (role !== "patient") {
+    await logAccess({
+      patientUserId: storedDocument.patient_user_id,
+      actorUserId: userId,
+      actorRole: role,
+      action: "download_document",
+      resource: storedDocument.file_name,
+    });
   }
 
   return res.download(resolvedPath, storedDocument.file_name);
@@ -3246,6 +3603,12 @@ app.post("/api/auth/login", async (req, res) => {
     return res.status(400).json({ error: "missing_required_fields" });
   }
 
+  const rateLimitKey = `${req.ip ?? "unknown"}:${email}`;
+
+  if (isLoginRateLimited(rateLimitKey)) {
+    return res.status(429).json({ error: "too_many_attempts" });
+  }
+
   const result = await pool.query<{
     id: number;
     name: string;
@@ -3264,10 +3627,16 @@ app.post("/api/auth/login", async (req, res) => {
   const user = result.rows[0];
 
   if (!user || !comparePassword(password, user.password)) {
+    registerLoginFailure(rateLimitKey);
     return res.status(401).json({ error: "invalid_credentials" });
   }
 
+  clearLoginFailures(rateLimitKey);
+
+  const token = signAuthToken({ sub: user.id, role: user.role });
+
   return res.json({
+    token,
     user: {
       id: user.id,
       name: user.name,
@@ -3277,9 +3646,41 @@ app.post("/api/auth/login", async (req, res) => {
   });
 });
 
+// Valida o token atual e devolve o utilizador correspondente.
+app.get("/api/auth/me", requireAuth, async (req: AuthedRequest, res) => {
+  const result = await pool.query<{
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+  }>(
+    `
+      SELECT id, name, email, role
+      FROM users
+      WHERE id = $1
+    `,
+    [req.authUserId]
+  );
+
+  const user = result.rows[0];
+
+  if (!user) {
+    return res.status(404).json({ error: "user_not_found" });
+  }
+
+  return res.json({ user });
+});
+
 const port = Number(process.env.PORT ?? 3001);
 
 async function startServer() {
+  if (!jwtSecret || jwtSecret.length < 32) {
+    throw new Error(
+      "JWT_SECRET em falta ou demasiado curto (mínimo 32 caracteres)."
+    );
+  }
+
+  await ensureBaseTables();
   await ensureCaregiverLinksTable();
   await ensureDoctorLinksTable();
 

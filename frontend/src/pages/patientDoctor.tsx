@@ -28,6 +28,7 @@ type PatientDoctorPageProps = {
   onOpenCaregiver: () => void;
   onOpenDoctor: () => void;
   onOpenDocuments: () => void;
+  onOpenAccessLog?: () => void;
   onOpenAccount: () => void;
   onLogout: () => void;
 };
@@ -60,6 +61,7 @@ export default function PatientDoctorPage({
   onOpenCaregiver,
   onOpenDoctor,
   onOpenDocuments,
+  onOpenAccessLog,
   onOpenAccount,
   onLogout,
 }: PatientDoctorPageProps) {
@@ -363,6 +365,7 @@ export default function PatientDoctorPage({
             onOpenCaregiver={onOpenCaregiver}
             onOpenDoctor={onOpenDoctor}
             onOpenDocuments={onOpenDocuments}
+            onOpenAccessLog={onOpenAccessLog}
             onOpenAccount={onOpenAccount}
             onLogout={onLogout}
           />

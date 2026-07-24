@@ -27,6 +27,7 @@ type AccountPageProps = {
     onOpenCaregiver: () => void;
     onOpenDoctor: () => void;
     onOpenDocuments: () => void;
+    onOpenAccessLog?: () => void;
     onOpenAccount: () => void;
   };
   caregiverNavigation?: {
@@ -586,6 +587,7 @@ export default function AccountPage({
               onOpenCaregiver={patientNavigation.onOpenCaregiver}
               onOpenDoctor={patientNavigation.onOpenDoctor}
               onOpenDocuments={patientNavigation.onOpenDocuments}
+              onOpenAccessLog={patientNavigation.onOpenAccessLog}
               onOpenAccount={patientNavigation.onOpenAccount}
               onLogout={onLogout}
             />
