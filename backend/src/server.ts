@@ -7,6 +7,7 @@ import helmet from "helmet";
 import multer from "multer";
 import nodemailer from "nodemailer";
 import path from "path";
+import PDFDocument from "pdfkit";
 import { Pool } from "pg";
 
 dotenv.config();
@@ -447,7 +448,18 @@ type PatientDecisionsRow = {
   artificial_feeding_preference: string | null;
   pain_management_preference: string | null;
   notes: string | null;
+  signed_at: string | null;
+  revoked_at: string | null;
+  updated_at: string | null;
 };
+
+type DecisionsLifecycleStatus =
+  | "draft"
+  | "active"
+  | "expiring"
+  | "expired"
+  | "outdated"
+  | "revoked";
 
 type PatientCaregiverRow = {
   id: number;
@@ -595,8 +607,38 @@ async function ensureBaseTables() {
       artificial_feeding_preference TEXT,
       pain_management_preference TEXT,
       notes TEXT,
+      signed_at DATE,
+      revoked_at TIMESTAMPTZ,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
+  `);
+
+  // Colunas do ciclo de vida (para bases de dados já existentes).
+  await pool.query(`
+    ALTER TABLE patient_decisions
+    ADD COLUMN IF NOT EXISTS signed_at DATE
+  `);
+  await pool.query(`
+    ALTER TABLE patient_decisions
+    ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ
+  `);
+
+  // Histórico de versões das decisões (uma linha por gravação).
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS patient_decisions_history (
+      id SERIAL PRIMARY KEY,
+      patient_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      resuscitation_preference TEXT,
+      artificial_feeding_preference TEXT,
+      pain_management_preference TEXT,
+      notes TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS patient_decisions_history_patient_idx
+    ON patient_decisions_history (patient_user_id, created_at DESC)
   `);
 
   await pool.query(`
@@ -1123,12 +1165,63 @@ function buildPatientDashboardResponse(row: PatientDashboardRow) {
   };
 }
 
+const DECISIONS_VALIDITY_YEARS = 5;
+const DECISIONS_EXPIRY_WARNING_DAYS = 60;
+
+function toDateOnly(value: string | null): Date | null {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(`${value.slice(0, 10)}T00:00:00Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function computeDecisionsLifecycle(row: PatientDecisionsRow) {
+  const signedAt = row.signed_at ? row.signed_at.slice(0, 10) : "";
+  const revokedAt = row.revoked_at ?? "";
+  const signedDate = toDateOnly(row.signed_at);
+  const updatedDate = toDateOnly(row.updated_at);
+
+  let validUntil = "";
+  let daysUntilExpiry: number | null = null;
+  let status: DecisionsLifecycleStatus = "draft";
+
+  if (revokedAt) {
+    status = "revoked";
+  } else if (signedDate) {
+    const validUntilDate = new Date(signedDate);
+    validUntilDate.setUTCFullYear(
+      validUntilDate.getUTCFullYear() + DECISIONS_VALIDITY_YEARS
+    );
+    validUntil = validUntilDate.toISOString().slice(0, 10);
+
+    const today = toDateOnly(new Date().toISOString());
+    daysUntilExpiry = today
+      ? Math.round((validUntilDate.getTime() - today.getTime()) / 86400000)
+      : null;
+
+    if (daysUntilExpiry !== null && daysUntilExpiry < 0) {
+      status = "expired";
+    } else if (updatedDate && updatedDate.getTime() > signedDate.getTime()) {
+      status = "outdated";
+    } else if (daysUntilExpiry !== null && daysUntilExpiry <= DECISIONS_EXPIRY_WARNING_DAYS) {
+      status = "expiring";
+    } else {
+      status = "active";
+    }
+  }
+
+  return { status, signedAt, validUntil, revokedAt, daysUntilExpiry };
+}
+
 function buildPatientDecisionsResponse(row: PatientDecisionsRow) {
   return {
     resuscitationPreference: row.resuscitation_preference ?? "",
     artificialFeedingPreference: row.artificial_feeding_preference ?? "",
     painManagementPreference: row.pain_management_preference ?? "",
     notes: row.notes ?? "",
+    lifecycle: computeDecisionsLifecycle(row),
   };
 }
 
@@ -1317,7 +1410,10 @@ async function getPatientDecisionsByUserId(userId: number) {
         patient_decisions.resuscitation_preference,
         patient_decisions.artificial_feeding_preference,
         patient_decisions.pain_management_preference,
-        patient_decisions.notes
+        patient_decisions.notes,
+        patient_decisions.signed_at::text AS signed_at,
+        patient_decisions.revoked_at::text AS revoked_at,
+        patient_decisions.updated_at::text AS updated_at
       FROM users
       INNER JOIN patients ON patients.user_id = users.id
       LEFT JOIN patient_decisions ON patient_decisions.patient_user_id = users.id
@@ -3054,6 +3150,27 @@ app.put("/api/users/:id/decisions", async (req, res) => {
     ]
   );
 
+  // Guarda um snapshot no histórico de versões.
+  await pool.query(
+    `
+      INSERT INTO patient_decisions_history (
+        patient_user_id,
+        resuscitation_preference,
+        artificial_feeding_preference,
+        pain_management_preference,
+        notes
+      )
+      VALUES ($1, $2, $3, $4, $5)
+    `,
+    [
+      userId,
+      resuscitationPreference,
+      artificialFeedingPreference,
+      painManagementPreference,
+      notes || null,
+    ]
+  );
+
   const decisions = await getPatientDecisionsByUserId(userId);
 
   if (!decisions) {
@@ -3061,6 +3178,269 @@ app.put("/api/users/:id/decisions", async (req, res) => {
   }
 
   return res.json(decisions);
+});
+
+// Regista a data de assinatura/registo da DAV (ex.: no RENTEV). A partir daí
+// a app calcula a validade de 5 anos e a caducidade.
+app.put("/api/users/:id/decisions/registration", async (req, res) => {
+  const userId = Number.parseInt(String(req.params.id ?? ""), 10);
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ error: "invalid_user_id" });
+  }
+
+  const signedAt = String(req.body.signedAt ?? "").trim();
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(signedAt)) {
+    return res.status(400).json({ error: "invalid_date" });
+  }
+
+  const signedDate = new Date(`${signedAt}T00:00:00Z`);
+
+  if (Number.isNaN(signedDate.getTime())) {
+    return res.status(400).json({ error: "invalid_date" });
+  }
+
+  if (signedDate.getTime() > Date.now()) {
+    return res.status(400).json({ error: "future_date" });
+  }
+
+  const updateResult = await pool.query(
+    `
+      UPDATE patient_decisions
+      SET signed_at = $2, revoked_at = NULL
+      WHERE patient_user_id = $1
+    `,
+    [userId, signedAt]
+  );
+
+  if (updateResult.rowCount === 0) {
+    return res.status(400).json({ error: "decisions_required" });
+  }
+
+  const decisions = await getPatientDecisionsByUserId(userId);
+
+  if (!decisions) {
+    return res.status(404).json({ error: "user_not_found" });
+  }
+
+  return res.json(decisions);
+});
+
+// Revoga a DAV (a pessoa pode fazê-lo a qualquer momento).
+app.post("/api/users/:id/decisions/revoke", async (req, res) => {
+  const userId = Number.parseInt(String(req.params.id ?? ""), 10);
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ error: "invalid_user_id" });
+  }
+
+  const updateResult = await pool.query(
+    `
+      UPDATE patient_decisions
+      SET revoked_at = NOW()
+      WHERE patient_user_id = $1 AND revoked_at IS NULL
+    `,
+    [userId]
+  );
+
+  if (updateResult.rowCount === 0) {
+    return res.status(400).json({ error: "nothing_to_revoke" });
+  }
+
+  const decisions = await getPatientDecisionsByUserId(userId);
+
+  if (!decisions) {
+    return res.status(404).json({ error: "user_not_found" });
+  }
+
+  return res.json(decisions);
+});
+
+// Histórico de versões das decisões.
+app.get("/api/users/:id/decisions/history", async (req, res) => {
+  const userId = Number.parseInt(String(req.params.id ?? ""), 10);
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ error: "invalid_user_id" });
+  }
+
+  const result = await pool.query<{
+    id: number;
+    resuscitation_preference: string | null;
+    artificial_feeding_preference: string | null;
+    pain_management_preference: string | null;
+    notes: string | null;
+    created_at: string;
+  }>(
+    `
+      SELECT
+        id,
+        resuscitation_preference,
+        artificial_feeding_preference,
+        pain_management_preference,
+        notes,
+        created_at::text AS created_at
+      FROM patient_decisions_history
+      WHERE patient_user_id = $1
+      ORDER BY created_at DESC, id DESC
+      LIMIT 50
+    `,
+    [userId]
+  );
+
+  return res.json({
+    versions: result.rows.map((row) => ({
+      id: row.id,
+      resuscitationPreference: row.resuscitation_preference ?? "",
+      artificialFeedingPreference: row.artificial_feeding_preference ?? "",
+      painManagementPreference: row.pain_management_preference ?? "",
+      notes: row.notes ?? "",
+      createdAt: row.created_at,
+    })),
+  });
+});
+
+// Gera o PDF da Diretiva Antecipada de Vontade (documento de trabalho).
+app.get("/api/users/:id/decisions/pdf", async (req, res) => {
+  const userId = Number.parseInt(String(req.params.id ?? ""), 10);
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ error: "invalid_user_id" });
+  }
+
+  const [account, decisions, proxy] = await Promise.all([
+    getAccountByUserId(userId),
+    getPatientDecisionsByUserId(userId),
+    getPatientCaregiverByUserId(userId),
+  ]);
+
+  if (!account || account.user.role !== "patient" || !decisions) {
+    return res.status(404).json({ error: "user_not_found" });
+  }
+
+  const orDash = (value: string | null | undefined) =>
+    value && value.trim() ? value.trim() : "—";
+  const formatDate = (value: string) => {
+    if (!value) {
+      return "—";
+    }
+    const [y, m, d] = value.slice(0, 10).split("-");
+    return d && m && y ? `${d}/${m}/${y}` : value;
+  };
+  const statusLabels: Record<string, string> = {
+    draft: "Rascunho — ainda não registada",
+    active: "Ativa",
+    expiring: "Ativa (a caducar em breve)",
+    expired: "Caducada",
+    outdated: "Alterada após o registo",
+    revoked: "Revogada",
+  };
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader(
+    "Content-Disposition",
+    'attachment; filename="diretiva-antecipada-de-vontade.pdf"'
+  );
+
+  const doc = new PDFDocument({ size: "A4", margin: 56 });
+  doc.pipe(res);
+
+  const heading = (text: string) => {
+    doc
+      .moveDown(0.8)
+      .fillColor("#2f6f6d")
+      .font("Helvetica-Bold")
+      .fontSize(13)
+      .text(text)
+      .moveDown(0.2)
+      .fillColor("#1f2933")
+      .font("Helvetica")
+      .fontSize(11);
+  };
+  const field = (label: string, value: string) => {
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(11)
+      .text(`${label}: `, { continued: true })
+      .font("Helvetica")
+      .text(value);
+  };
+
+  doc
+    .fillColor("#2f6f6d")
+    .font("Helvetica-Bold")
+    .fontSize(20)
+    .text("Diretiva Antecipada de Vontade");
+  doc
+    .fillColor("#5c7e93")
+    .font("Helvetica")
+    .fontSize(12)
+    .text("Testamento Vital");
+  doc.fillColor("#1f2933").fontSize(11);
+
+  heading("Identificação");
+  field("Nome", orDash(account.user.name));
+  field("Número de utente", orDash(account.profile.patientNumber));
+  field(
+    "Data de nascimento",
+    account.profile.dateOfBirth ? formatDate(account.profile.dateOfBirth) : "—"
+  );
+  field("Telefone", orDash(account.profile.phoneNumber));
+  field("Email", orDash(account.user.email));
+
+  heading("Decisões");
+  field("Reanimação", orDash(decisions.resuscitationPreference));
+  field("Alimentação artificial", orDash(decisions.artificialFeedingPreference));
+  field("Conforto / gestão da dor", orDash(decisions.painManagementPreference));
+  if (decisions.notes && decisions.notes.trim()) {
+    doc
+      .moveDown(0.3)
+      .font("Helvetica-Bold")
+      .text("Notas:")
+      .font("Helvetica")
+      .text(decisions.notes.trim());
+  }
+
+  heading("Procurador de cuidados de saúde");
+  if (proxy && (proxy.name || proxy.email || proxy.phoneNumber)) {
+    field("Nome", orDash(proxy.name));
+    field("Relação", orDash(proxy.relationshipToPatient));
+    field("Telefone", orDash(proxy.phoneNumber));
+    field("Email", orDash(proxy.email));
+  } else {
+    doc.text("Não indicado.");
+  }
+
+  heading("Estado do documento");
+  field(
+    "Estado",
+    statusLabels[decisions.lifecycle.status] ?? decisions.lifecycle.status
+  );
+  field(
+    "Data de assinatura/registo",
+    decisions.lifecycle.signedAt ? formatDate(decisions.lifecycle.signedAt) : "—"
+  );
+  field(
+    "Válida até",
+    decisions.lifecycle.validUntil
+      ? formatDate(decisions.lifecycle.validUntil)
+      : "—"
+  );
+
+  doc.moveDown(1);
+  doc
+    .fontSize(9)
+    .fillColor("#667085")
+    .text(
+      "Este documento é uma versão de trabalho gerada pela aplicação MyVontade e não substitui o registo legal. Para produzir efeitos, a Diretiva Antecipada de Vontade deve ser formalizada e registada no RENTEV (Registo Nacional do Testamento Vital), com assinatura presencial num balcão RENTEV ou com assinatura reconhecida por notário. A validade legal é de 5 anos a contar da assinatura.",
+      { align: "justify" }
+    );
+  doc
+    .moveDown(0.5)
+    .text(`Gerado em ${new Date().toLocaleDateString("pt-PT")}.`);
+
+  doc.end();
 });
 
 app.put("/api/users/:id/caregiver", async (req, res) => {

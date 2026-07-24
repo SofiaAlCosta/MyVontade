@@ -200,6 +200,31 @@ function getFilledDecisionCount(formData: PatientDecisions) {
   ].filter((value) => value.trim()).length;
 }
 
+type DecisionsLifecycle = {
+  status: "draft" | "active" | "expiring" | "expired" | "outdated" | "revoked";
+  signedAt: string;
+  validUntil: string;
+  revokedAt: string;
+  daysUntilExpiry: number | null;
+};
+
+const lifecycleStatusLabels: Record<DecisionsLifecycle["status"], string> = {
+  draft: "Rascunho — ainda não registada",
+  active: "Ativa",
+  expiring: "A caducar",
+  expired: "Caducada",
+  outdated: "Alterada após o registo",
+  revoked: "Revogada",
+};
+
+function formatIsoDate(value: string) {
+  if (!value) {
+    return "—";
+  }
+  const [y, m, d] = value.slice(0, 10).split("-");
+  return d && m && y ? `${d}/${m}/${y}` : value;
+}
+
 function getDecisionsMessage(error: string | undefined) {
   if (error === "missing_required_fields") {
     return "Preenche as decisões principais antes de guardar.";
@@ -211,6 +236,22 @@ function getDecisionsMessage(error: string | undefined) {
 
   if (error === "user_not_found") {
     return "Não foi possível encontrar estas diretivas.";
+  }
+
+  if (error === "invalid_date") {
+    return "Indica uma data de assinatura válida.";
+  }
+
+  if (error === "future_date") {
+    return "A data de assinatura não pode ser no futuro.";
+  }
+
+  if (error === "decisions_required") {
+    return "Define e guarda as decisões antes de registar.";
+  }
+
+  if (error === "nothing_to_revoke") {
+    return "Não há uma diretiva ativa para revogar.";
   }
 
   return "Ocorreu um erro. Tenta novamente.";
@@ -238,6 +279,11 @@ export default function DecisionsPage({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [openField, setOpenField] = useState<DecisionFieldKey | null>(null);
+  const [lifecycle, setLifecycle] = useState<DecisionsLifecycle | null>(null);
+  const [signedAtInput, setSignedAtInput] = useState("");
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [isRevoking, setIsRevoking] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const hasChanges = !isLoading && !hasSameFormData(formData, savedFormData);
   const filledDecisionCount = getFilledDecisionCount(formData);
@@ -253,6 +299,7 @@ export default function DecisionsPage({
         const response = await fetch(`${apiUrl}/api/users/${user.id}/decisions`);
         const data = (await response.json()) as Partial<PatientDecisions> & {
           error?: string;
+          lifecycle?: DecisionsLifecycle;
         };
 
         if (
@@ -279,6 +326,7 @@ export default function DecisionsPage({
 
           setFormData(nextFormData);
           setSavedFormData(nextFormData);
+          setLifecycle(data.lifecycle ?? null);
         }
       } catch {
         if (!ignore) {
@@ -368,6 +416,7 @@ export default function DecisionsPage({
 
       const data = (await response.json()) as Partial<PatientDecisions> & {
         error?: string;
+        lifecycle?: DecisionsLifecycle;
       };
 
       if (
@@ -391,6 +440,7 @@ export default function DecisionsPage({
 
       setFormData(nextFormData);
       setSavedFormData(nextFormData);
+      setLifecycle(data.lifecycle ?? null);
       setErrors({});
       setMessage("Decisões guardadas com sucesso.");
       setMessageTone("success");
@@ -402,6 +452,116 @@ export default function DecisionsPage({
       setIsSaving(false);
     }
   };
+
+  const handleRegister = async () => {
+    if (!signedAtInput) {
+      setMessage("Indica uma data de assinatura válida.");
+      setMessageTone("error");
+      return;
+    }
+
+    setIsRegistering(true);
+    setMessage("");
+
+    try {
+      const response = await fetch(
+        `${apiUrl}/api/users/${user.id}/decisions/registration`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ signedAt: signedAtInput }),
+        }
+      );
+
+      const data = (await response.json()) as {
+        error?: string;
+        lifecycle?: DecisionsLifecycle;
+      };
+
+      if (!response.ok) {
+        setMessage(getDecisionsMessage(data.error));
+        setMessageTone("error");
+        return;
+      }
+
+      setLifecycle(data.lifecycle ?? null);
+      setSignedAtInput("");
+      setMessage("Registo guardado com sucesso.");
+      setMessageTone("success");
+    } catch {
+      setMessage("Não foi possível ligar ao servidor.");
+      setMessageTone("error");
+    } finally {
+      setIsRegistering(false);
+    }
+  };
+
+  const handleRevoke = async () => {
+    setIsRevoking(true);
+    setMessage("");
+
+    try {
+      const response = await fetch(
+        `${apiUrl}/api/users/${user.id}/decisions/revoke`,
+        { method: "POST" }
+      );
+
+      const data = (await response.json()) as {
+        error?: string;
+        lifecycle?: DecisionsLifecycle;
+      };
+
+      if (!response.ok) {
+        setMessage(getDecisionsMessage(data.error));
+        setMessageTone("error");
+        return;
+      }
+
+      setLifecycle(data.lifecycle ?? null);
+      setMessage("Diretiva revogada.");
+      setMessageTone("success");
+    } catch {
+      setMessage("Não foi possível ligar ao servidor.");
+      setMessageTone("error");
+    } finally {
+      setIsRevoking(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    setIsDownloading(true);
+    setMessage("");
+
+    try {
+      const response = await fetch(
+        `${apiUrl}/api/users/${user.id}/decisions/pdf`
+      );
+
+      if (!response.ok) {
+        setMessage("Não foi possível gerar o PDF.");
+        setMessageTone("error");
+        return;
+      }
+
+      const blob = await response.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = "diretiva-antecipada-de-vontade.pdf";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(objectUrl);
+    } catch {
+      setMessage("Não foi possível ligar ao servidor.");
+      setMessageTone("error");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const isRevoked = lifecycle?.status === "revoked";
+  const isRegistered = Boolean(lifecycle?.signedAt) && !isRevoked;
 
   return (
     <div className="module-page">
@@ -426,6 +586,116 @@ export default function DecisionsPage({
       <main className="module-main">
         <section className="module-intro-card module-intro-card-minimal">
           <h1 className="module-title">{t("As Minhas Decisões")}</h1>
+        </section>
+
+        <section className="module-card">
+          <div className="module-section-heading">
+            <div className="module-section-heading-group">
+              <h2 className="module-card-title">{t("Estado da diretiva")}</h2>
+              {lifecycle && (
+                <span
+                  className={`module-pill ${
+                    lifecycle.status === "expired" ||
+                    lifecycle.status === "revoked" ||
+                    lifecycle.status === "expiring" ||
+                    lifecycle.status === "outdated"
+                      ? "module-pill-warning"
+                      : ""
+                  }`}
+                >
+                  {t(lifecycleStatusLabels[lifecycle.status])}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <p className="module-inline-note">
+            {!lifecycle || lifecycle.status === "draft"
+              ? t("Ainda não registaste esta diretiva no RENTEV.")
+              : lifecycle.status === "revoked"
+                ? t("Esta diretiva foi revogada.")
+                : lifecycle.status === "expired"
+                  ? t("A validade caducou. Renova a diretiva no RENTEV.")
+                  : lifecycle.status === "outdated"
+                    ? t(
+                        "Alteraste as decisões após o registo. Considera re-registar no RENTEV."
+                      )
+                    : lifecycle.status === "expiring"
+                      ? t(
+                          "Caduca em {count} dias. Considera renovar no RENTEV.",
+                          { count: lifecycle.daysUntilExpiry ?? 0 }
+                        )
+                      : t("Válida até {date}.", {
+                          date: formatIsoDate(lifecycle.validUntil),
+                        })}
+          </p>
+
+          {isRegistered && (
+            <div className="module-meta-list">
+              <div className="module-meta-row">
+                <p className="module-meta-label">{t("Data de assinatura")}</p>
+                <p className="module-meta-value">
+                  {formatIsoDate(lifecycle?.signedAt ?? "")}
+                </p>
+              </div>
+              <div className="module-meta-row">
+                <p className="module-meta-label">{t("Válida até")}</p>
+                <p className="module-meta-value">
+                  {formatIsoDate(lifecycle?.validUntil ?? "")}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="module-field">
+            <div className="module-field-label">
+              <span>{t("Data de assinatura/registo no RENTEV")}</span>
+            </div>
+            <input
+              type="date"
+              value={signedAtInput}
+              max={new Date().toISOString().slice(0, 10)}
+              disabled={isRegistering}
+              onChange={(event) => setSignedAtInput(event.target.value)}
+            />
+          </div>
+
+          <div className="module-inline-actions">
+            <button
+              className="module-inline-button"
+              type="button"
+              disabled={isRegistering || !signedAtInput}
+              onClick={() => void handleRegister()}
+            >
+              {isRegistering ? t("A guardar...") : t("Registar assinatura")}
+            </button>
+
+            <button
+              className="module-inline-button"
+              type="button"
+              disabled={isDownloading}
+              onClick={() => void handleDownloadPdf()}
+            >
+              {isDownloading ? t("A gerar...") : t("Descarregar PDF")}
+            </button>
+
+            {isRegistered && (
+              <button
+                className="module-inline-button module-inline-button-danger"
+                type="button"
+                disabled={isRevoking}
+                onClick={() => void handleRevoke()}
+              >
+                {isRevoking ? t("A revogar...") : t("Revogar diretiva")}
+              </button>
+            )}
+          </div>
+
+          <p className="module-note">
+            {t(
+              "A MyVontade ajuda-te a preparar e organizar a tua diretiva, mas não é o registo legal. O registo oficial é feito no RENTEV."
+            )}
+          </p>
         </section>
 
         <div className="module-grid">

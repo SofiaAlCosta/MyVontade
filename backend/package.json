@@ -7,7 +7,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "start": "ts-node-dev --transpile-only src/server.ts",
     "typecheck": "tsc --noEmit",
-    "test:e2e": "node scripts/test-auth.mjs && node scripts/test-audit.mjs && node scripts/test-password-reset.mjs",
+    "test:e2e": "node scripts/test-auth.mjs && node scripts/test-audit.mjs && node scripts/test-password-reset.mjs && node scripts/test-decisions.mjs",
     "test": "npm run test:e2e"
   },
   "keywords": [],
@@ -22,6 +22,7 @@
     "helmet": "^8.1.0",
     "multer": "^2.1.1",
     "nodemailer": "^6.9.16",
+    "pdfkit": "^0.15.1",
     "pg": "^8.20.0"
   },
   "devDependencies": {
@@ -29,6 +30,7 @@
     "@types/express": "^5.0.6",
     "@types/node": "^25.3.5",
     "@types/nodemailer": "^6.4.17",
+    "@types/pdfkit": "^0.13.9",
     "@types/pg": "^8.18.0",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.3"

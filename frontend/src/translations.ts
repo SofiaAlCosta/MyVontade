@@ -266,6 +266,47 @@ registerTranslations({
   "Não foi possível remover este documento.":
     "Could not remove this document.",
 
+  // Ciclo de vida da diretiva (DAV)
+  "Estado da diretiva": "Directive status",
+  "Rascunho — ainda não registada": "Draft — not yet registered",
+  Ativa: "Active",
+  "A caducar": "Expiring soon",
+  Caducada: "Expired",
+  "Alterada após o registo": "Changed after registration",
+  Revogada: "Revoked",
+  "Ainda não registaste esta diretiva no RENTEV.":
+    "You haven't registered this directive with RENTEV yet.",
+  "Esta diretiva foi revogada.": "This directive has been revoked.",
+  "A validade caducou. Renova a diretiva no RENTEV.":
+    "The validity has expired. Renew the directive with RENTEV.",
+  "Alteraste as decisões após o registo. Considera re-registar no RENTEV.":
+    "You changed the decisions after registration. Consider re-registering with RENTEV.",
+  "Caduca em {count} dias. Considera renovar no RENTEV.":
+    "Expires in {count} days. Consider renewing with RENTEV.",
+  "Válida até {date}.": "Valid until {date}.",
+  "Data de assinatura": "Signature date",
+  "Válida até": "Valid until",
+  "Data de assinatura/registo no RENTEV":
+    "Signature/registration date with RENTEV",
+  "Registar assinatura": "Register signature",
+  "A gerar...": "Generating...",
+  "Descarregar PDF": "Download PDF",
+  "A revogar...": "Revoking...",
+  "Revogar diretiva": "Revoke directive",
+  "A MyVontade ajuda-te a preparar e organizar a tua diretiva, mas não é o registo legal. O registo oficial é feito no RENTEV.":
+    "MyVontade helps you prepare and organize your directive, but it is not the legal registry. Official registration is done with RENTEV.",
+  "Registo guardado com sucesso.": "Registration saved successfully.",
+  "Diretiva revogada.": "Directive revoked.",
+  "Não foi possível gerar o PDF.": "Could not generate the PDF.",
+  "Indica uma data de assinatura válida.":
+    "Enter a valid signature date.",
+  "A data de assinatura não pode ser no futuro.":
+    "The signature date cannot be in the future.",
+  "Define e guarda as decisões antes de registar.":
+    "Define and save the decisions before registering.",
+  "Não há uma diretiva ativa para revogar.":
+    "There is no active directive to revoke.",
+
   // Registo de acessos
   "Registo de acessos": "Access log",
   "Quem consultou ou descarregou os teus dados, e quando.":
