@@ -134,11 +134,12 @@ function signAuthToken(payload: AuthTokenPayload) {
 function verifyAuthToken(token: string): AuthTokenPayload | null {
   const parts = token.split(".");
 
-  if (parts.length !== 3) {
+  const [encodedHeader, encodedBody, signature] = parts;
+
+  if (parts.length !== 3 || !encodedHeader || !encodedBody || !signature) {
     return null;
   }
 
-  const [encodedHeader, encodedBody, signature] = parts;
   const data = `${encodedHeader}.${encodedBody}`;
   const expectedSignature = crypto
     .createHmac("sha256", jwtSecret)

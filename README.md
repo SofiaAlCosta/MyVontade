@@ -89,3 +89,29 @@ Se adicionar novas dependências ao frontend, execute novamente:
 ```powershell
 npm install
 ```
+
+## Testes
+
+Existem testes end-to-end da autenticação e do registo de acessos em
+`backend/scripts/`. Com a API a correr (`docker compose up -d`), execute:
+
+```powershell
+cd backend
+npm run test:e2e
+```
+
+Para verificar os tipos do backend sem instalar dependências localmente, pode
+usar o contentor da API:
+
+```powershell
+docker compose exec api npm run typecheck
+```
+
+## Integração contínua (CI)
+
+O workflow `.github/workflows/ci.yml` corre automaticamente em cada `push` e
+`pull request`:
+
+- **Backend**: arranca um PostgreSQL, verifica os tipos (`npm run typecheck`) e
+  corre os testes end-to-end (`npm run test:e2e`).
+- **Frontend**: faz o build (`npm run build`), que inclui a verificação de tipos.
