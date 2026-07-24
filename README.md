@@ -107,6 +107,24 @@ usar o contentor da API:
 docker compose exec api npm run typecheck
 ```
 
+## Recuperação de palavra-passe (email)
+
+O fluxo de "esqueci-me da palavra-passe" envia um link por email. Configure as
+credenciais SMTP no `infrastructure/.env` (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`,
+`SMTP_PORT`, `SMTP_SECURE`, `MAIL_FROM`) e o `APP_BASE_URL` do frontend.
+
+- **Sem SMTP configurado** (desenvolvimento): o link não é enviado por email, é
+  escrito nos logs da API. Veja com `docker compose logs api`.
+- **Testar sem email**: defina `EXPOSE_RESET_TOKEN=true` no `.env` (nunca em
+  produção) para o endpoint devolver o token na resposta.
+
+Depois de adicionar a dependência de email, reinicie a API para instalar:
+
+```powershell
+cd infrastructure
+docker compose up -d --build
+```
+
 ## Integração contínua (CI)
 
 O workflow `.github/workflows/ci.yml` corre automaticamente em cada `push` e

@@ -7,10 +7,12 @@ import DecisionsPage from "./pages/decisions";
 import DoctorHome from "./pages/doctorHome";
 import DoctorPatientsPage from "./pages/doctorPatients";
 import DocumentsPage from "./pages/documents";
+import ForgotPassword from "./pages/forgotPassword";
 import Login from "./pages/login";
 import PatientCaregiverPage from "./pages/patientCaregiver";
 import PatientDoctorPage from "./pages/patientDoctor";
 import PatientHome from "./pages/patientHome";
+import ResetPassword from "./pages/resetPassword";
 import Signup from "./pages/signup";
 import type { SignupFormData, User } from "./types/user";
 import { AUTH_LOGOUT_EVENT } from "./utils/apiClient";
@@ -28,7 +30,9 @@ type Screen =
   | "caregiverPatients"
   | "doctorPatients"
   | "documents"
-  | "accessLog";
+  | "accessLog"
+  | "forgotPassword"
+  | "resetPassword";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 const LAST_LOGIN_EMAIL_KEY = "myvontade-last-login-email";
@@ -39,10 +43,41 @@ const authMessages: Record<string, string> = {
   user_already_exists: "Já existe uma conta com estes dados.",
   invalid_credentials: "Email ou palavra-passe inválidos.",
   invalid_field_format: "Existem campos com formato inválido.",
+  weak_password: "A palavra-passe deve ter pelo menos 8 caracteres.",
+  invalid_or_expired_token:
+    "Esta ligação de recuperação é inválida ou expirou. Pede uma nova.",
+  too_many_attempts: "Demasiadas tentativas. Tenta novamente mais tarde.",
 };
 
+function getResetTokenFromHash(): string {
+  const hash = window.location.hash;
+
+  if (!hash.startsWith("#reset")) {
+    return "";
+  }
+
+  const queryStart = hash.indexOf("?");
+
+  if (queryStart === -1) {
+    return "";
+  }
+
+  const params = new URLSearchParams(hash.slice(queryStart + 1));
+  return params.get("token") ?? "";
+}
+
 function getInitialScreen(): Screen {
-  return window.location.hash === "#signup" ? "signup" : "login";
+  const hash = window.location.hash;
+
+  if (hash.startsWith("#reset")) {
+    return "resetPassword";
+  }
+
+  if (hash === "#forgot") {
+    return "forgotPassword";
+  }
+
+  return hash === "#signup" ? "signup" : "login";
 }
 
 function getErrorMessage(error: string | undefined) {
@@ -58,6 +93,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [message, setMessage] = useState("");
   const [restoringSession, setRestoringSession] = useState(true);
+  const [resetToken] = useState(getResetTokenFromHash);
 
   // Ao arrancar, se houver um token guardado, validá-lo e recuperar a sessão.
   useEffect(() => {
@@ -120,11 +156,18 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const nextHash = currentUser
-      ? `#${screen}`
-      : screen === "signup"
-        ? "#signup"
-        : "";
+    let nextHash = "";
+
+    if (currentUser) {
+      nextHash = `#${screen}`;
+    } else if (screen === "signup") {
+      nextHash = "#signup";
+    } else if (screen === "forgotPassword") {
+      nextHash = "#forgot";
+    } else if (screen === "resetPassword") {
+      nextHash = resetToken ? `#reset?token=${resetToken}` : "#reset";
+    }
+
     const nextUrl = `${window.location.pathname}${window.location.search}${nextHash}`;
 
     window.history.replaceState(null, "", nextUrl);
@@ -136,7 +179,7 @@ export default function App() {
     window.requestAnimationFrame(() => {
       window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     });
-  }, [currentUser, screen]);
+  }, [currentUser, screen, resetToken]);
 
   const openScreen = (nextScreen: Screen, clearMessage = false) => {
     if (clearMessage) {
@@ -148,6 +191,7 @@ export default function App() {
 
   const openLogin = () => openScreen("login", true);
   const openSignup = () => openScreen("signup", true);
+  const openForgotPassword = () => openScreen("forgotPassword", true);
   const openHome = () => openScreen("home");
   const openAccount = () => openScreen("account");
   const openDecisions = () => openScreen("decisions");
@@ -279,6 +323,53 @@ export default function App() {
     }
   };
 
+  const handleForgotPassword = async (email: string) => {
+    setMessage("");
+
+    try {
+      await fetch(`${API_URL}/api/auth/forgot-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: normalizeEmail(email) }),
+      });
+
+      // Resposta sempre genérica, para não revelar que emails têm conta.
+      setMessage(
+        "Se existir uma conta com esse email, enviámos instruções para recuperar a palavra-passe."
+      );
+    } catch {
+      setMessage("Não foi possível ligar ao servidor.");
+    }
+  };
+
+  const handleResetPassword = async (token: string, newPassword: string) => {
+    setMessage("");
+
+    try {
+      const response = await fetch(`${API_URL}/api/auth/reset-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ token, newPassword }),
+      });
+
+      const data = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        setMessage(getErrorMessage(data.error));
+        return;
+      }
+
+      setMessage("Palavra-passe alterada com sucesso. Já podes entrar.");
+      setScreen("login");
+    } catch {
+      setMessage("Não foi possível ligar ao servidor.");
+    }
+  };
+
   const renderAccountPage = () => {
     if (!currentUser) {
       return null;
@@ -310,17 +401,31 @@ export default function App() {
   if (!currentUser) {
     return (
       <div className="app-shell">
-        {screen === "login" ? (
-          <Login
-            message={message}
-            onGoToSignup={openSignup}
-            onLogin={handleLogin}
-          />
-        ) : (
+        {screen === "signup" ? (
           <Signup
             message={message}
             onGoToLogin={openLogin}
             onSignup={handleSignup}
+          />
+        ) : screen === "forgotPassword" ? (
+          <ForgotPassword
+            message={message}
+            onForgotPassword={handleForgotPassword}
+            onGoToLogin={openLogin}
+          />
+        ) : screen === "resetPassword" ? (
+          <ResetPassword
+            token={resetToken}
+            message={message}
+            onResetPassword={handleResetPassword}
+            onGoToLogin={openLogin}
+          />
+        ) : (
+          <Login
+            message={message}
+            onGoToSignup={openSignup}
+            onGoToForgotPassword={openForgotPassword}
+            onLogin={handleLogin}
           />
         )}
       </div>

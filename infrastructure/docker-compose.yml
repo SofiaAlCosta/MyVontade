@@ -24,6 +24,14 @@ services:
       CHOKIDAR_USEPOLLING: "true"
       FRONTEND_ORIGIN: http://localhost:5173
       JWT_SECRET: ${JWT_SECRET}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:5173}
+      MAIL_FROM: ${MAIL_FROM:-MyVontade <no-reply@myvontade.pt>}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      EXPOSE_RESET_TOKEN: ${EXPOSE_RESET_TOKEN:-false}
       AUTH0_AUDIENCE: ${AUTH0_AUDIENCE}
       AUTH0_ISSUER_BASE_URL: ${AUTH0_ISSUER_BASE_URL}
     ports:

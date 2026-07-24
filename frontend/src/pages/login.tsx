@@ -62,12 +62,14 @@ type LoginProps = {
   message: string;
   onLogin: (email: string, password: string) => Promise<void>;
   onGoToSignup: () => void;
+  onGoToForgotPassword: () => void;
 };
 
 export default function Login({
   message,
   onLogin,
   onGoToSignup,
+  onGoToForgotPassword,
 }: LoginProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -203,6 +205,18 @@ export default function Login({
               Entrar
             </button>
           </form>
+
+          <p className="form-switch">
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                onGoToForgotPassword();
+              }}
+            >
+              Esqueceste-te da palavra-passe?
+            </a>
+          </p>
 
           {message && (
             <p className="form-message" role="status">

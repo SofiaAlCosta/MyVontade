@@ -5,6 +5,7 @@ import express from "express";
 import { promises as fs } from "fs";
 import helmet from "helmet";
 import multer from "multer";
+import nodemailer from "nodemailer";
 import path from "path";
 import { Pool } from "pg";
 
@@ -254,6 +255,91 @@ async function logAccess(entry: {
   } catch (error) {
     console.error("Não foi possível registar o acesso.", error);
   }
+}
+
+// --- Recuperação de palavra-passe: email + tokens ---
+
+const appBaseUrl = process.env.APP_BASE_URL ?? "http://localhost:5173";
+const mailFrom =
+  process.env.MAIL_FROM ?? "MyVontade <no-reply@myvontade.pt>";
+const smtpHost = process.env.SMTP_HOST;
+const smtpPort = Number(process.env.SMTP_PORT ?? 587);
+const smtpUser = process.env.SMTP_USER;
+const smtpPass = process.env.SMTP_PASS;
+const smtpSecure = process.env.SMTP_SECURE === "true";
+
+// Em dev/CI, permite devolver o token na resposta para testar sem email.
+const exposeResetToken = process.env.EXPOSE_RESET_TOKEN === "true";
+
+let mailTransport: nodemailer.Transporter | null = null;
+
+function getMailTransport() {
+  if (!smtpHost || !smtpUser || !smtpPass) {
+    return null;
+  }
+
+  if (!mailTransport) {
+    mailTransport = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpSecure,
+      auth: { user: smtpUser, pass: smtpPass },
+    });
+  }
+
+  return mailTransport;
+}
+
+async function sendPasswordResetEmail(email: string, resetLink: string) {
+  const subject = "Recuperação de palavra-passe — MyVontade";
+  const text = [
+    "Recebemos um pedido para repor a tua palavra-passe.",
+    "",
+    "Abre o link seguinte para definir uma nova (válido durante 1 hora):",
+    resetLink,
+    "",
+    "Se não fizeste este pedido, ignora este email.",
+  ].join("\n");
+  const html = `
+    <p>Recebemos um pedido para repor a tua palavra-passe.</p>
+    <p>Abre o link seguinte para definir uma nova (válido durante 1 hora):</p>
+    <p><a href="${resetLink}">${resetLink}</a></p>
+    <p>Se não fizeste este pedido, ignora este email.</p>
+  `;
+
+  const transport = getMailTransport();
+
+  if (!transport) {
+    // Sem SMTP configurado (dev): não falha, apenas regista o link.
+    console.log(
+      `[password-reset] SMTP não configurado. Link para ${email}: ${resetLink}`
+    );
+    return;
+  }
+
+  await transport.sendMail({ from: mailFrom, to: email, subject, text, html });
+}
+
+function hashResetToken(token: string) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+// Limitador de pedidos de recuperação (em memória, por IP+email).
+const forgotAttempts = new Map<string, { count: number; firstAt: number }>();
+const forgotWindowMs = 15 * 60 * 1000;
+const forgotMaxAttempts = 5;
+
+function isForgotRateLimited(key: string) {
+  const now = Date.now();
+  const entry = forgotAttempts.get(key);
+
+  if (!entry || now - entry.firstAt > forgotWindowMs) {
+    forgotAttempts.set(key, { count: 1, firstAt: now });
+    return false;
+  }
+
+  entry.count += 1;
+  return entry.count > forgotMaxAttempts;
 }
 
 // Limitador simples de tentativas de login (em memória, por IP+email).
@@ -529,6 +615,22 @@ async function ensureBaseTables() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS access_log_patient_idx
     ON access_log (patient_user_id, created_at DESC)
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      used_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS password_reset_tokens_hash_idx
+    ON password_reset_tokens (token_hash)
   `);
 }
 
@@ -3670,6 +3772,151 @@ app.get("/api/auth/me", requireAuth, async (req: AuthedRequest, res) => {
   }
 
   return res.json({ user });
+});
+
+// Pedido de recuperação de palavra-passe. Responde sempre de forma genérica
+// para não revelar que emails têm conta (evita enumeração de utilizadores).
+app.post("/api/auth/forgot-password", async (req, res) => {
+  const email = String(req.body.email ?? "")
+    .trim()
+    .toLowerCase();
+
+  if (!email) {
+    return res.status(400).json({ error: "missing_required_fields" });
+  }
+
+  const rateLimitKey = `${req.ip ?? "unknown"}:${email}`;
+
+  if (isForgotRateLimited(rateLimitKey)) {
+    return res.status(429).json({ error: "too_many_attempts" });
+  }
+
+  const genericResponse: { message: string; token?: string } = {
+    message: "reset_requested",
+  };
+
+  const userResult = await pool.query<{ id: number }>(
+    `
+      SELECT id
+      FROM users
+      WHERE email = $1
+    `,
+    [email]
+  );
+
+  const user = userResult.rows[0];
+
+  if (user) {
+    const token = crypto.randomBytes(32).toString("hex");
+    const tokenHash = hashResetToken(token);
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+
+    // Invalida pedidos anteriores ainda não usados deste utilizador.
+    await pool.query(
+      `
+        UPDATE password_reset_tokens
+        SET used_at = NOW()
+        WHERE user_id = $1 AND used_at IS NULL
+      `,
+      [user.id]
+    );
+
+    await pool.query(
+      `
+        INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+        VALUES ($1, $2, $3)
+      `,
+      [user.id, tokenHash, expiresAt]
+    );
+
+    const resetLink = `${appBaseUrl}/#reset?token=${token}`;
+
+    try {
+      await sendPasswordResetEmail(email, resetLink);
+    } catch (error) {
+      console.error("Não foi possível enviar o email de recuperação.", error);
+    }
+
+    if (exposeResetToken) {
+      genericResponse.token = token;
+    }
+  }
+
+  return res.json(genericResponse);
+});
+
+// Redefine a palavra-passe a partir de um token válido (uso único, com prazo).
+app.post("/api/auth/reset-password", async (req, res) => {
+  const token = String(req.body.token ?? "").trim();
+  const newPassword = String(req.body.newPassword ?? "");
+
+  if (!token || !newPassword) {
+    return res.status(400).json({ error: "missing_required_fields" });
+  }
+
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: "weak_password" });
+  }
+
+  const tokenHash = hashResetToken(token);
+
+  const tokenResult = await pool.query<{
+    id: number;
+    user_id: number;
+    expires_at: string;
+    used_at: string | null;
+  }>(
+    `
+      SELECT id, user_id, expires_at::text AS expires_at, used_at::text AS used_at
+      FROM password_reset_tokens
+      WHERE token_hash = $1
+    `,
+    [tokenHash]
+  );
+
+  const record = tokenResult.rows[0];
+
+  if (
+    !record ||
+    record.used_at ||
+    new Date(record.expires_at).getTime() < Date.now()
+  ) {
+    return res.status(400).json({ error: "invalid_or_expired_token" });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    await client.query(
+      `
+        UPDATE users
+        SET password = $1
+        WHERE id = $2
+      `,
+      [hashPassword(newPassword), record.user_id]
+    );
+
+    await client.query(
+      `
+        UPDATE password_reset_tokens
+        SET used_at = NOW()
+        WHERE id = $1
+      `,
+      [record.id]
+    );
+
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Não foi possível redefinir a palavra-passe.", error);
+    return res.status(500).json({ error: "server_error" });
+  } finally {
+    client.release();
+  }
+
+  return res.json({ message: "password_reset" });
 });
 
 const port = Number(process.env.PORT ?? 3001);
