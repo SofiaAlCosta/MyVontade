@@ -1,0 +1,35 @@
+# Blueprint do Render para o backend (API) da MyVontade.
+# A base de dados fica no Neon (Postgres grátis) e o frontend na Vercel/Netlify.
+# Depois de importar este blueprint no Render, preenche as variáveis marcadas
+# com sync:false (o Render pede-as, não ficam no repositório).
+services:
+  - type: web
+    name: myvontade-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false # URL do Postgres do Neon
+      - key: JWT_SECRET
+        generateValue: true # o Render gera um segredo forte
+      - key: FRONTEND_ORIGIN
+        sync: false # URL do frontend (ex.: https://myvontade.vercel.app)
+      - key: APP_BASE_URL
+        sync: false # igual ao FRONTEND_ORIGIN (usado nos links de email)
+      - key: EXPOSE_RESET_TOKEN
+        value: "false" # NUNCA true em produção
+      - key: MAIL_FROM
+        value: "MyVontade <no-reply@myvontade.pt>"
+      - key: SMTP_HOST
+        sync: false # opcional; sem SMTP o link de recuperação vai para os logs
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_SECURE
+        value: "false"
